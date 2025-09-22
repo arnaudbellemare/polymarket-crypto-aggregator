@@ -1,0 +1,30 @@
+{
+  "name": "polymarket-crypto-aggregator",
+  "version": "1.0.0",
+  "description": "Fetch crypto market data from Polymarket APIs and calculate weighted averages",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node src/crypto-index-demo.js",
+    "live": "node src/live-demo.js",
+    "working": "node src/working-demo.js",
+    "refined": "node src/refined-demo.js",
+    "cpmi": "node src/cpmi-demo.js",
+    "cpmi-final": "node src/cpmi-final-demo.js",
+    "test-prob": "node src/probability-test.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test src/tests/*.test.js"
+  },
+  "keywords": ["polymarket", "crypto", "market-data", "websocket", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
