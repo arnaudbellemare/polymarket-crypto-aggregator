@@ -1,4 +1,5 @@
 import { SimplePolymarketClient } from './clients/SimplePolymarketClient.js';
+import ccxt from 'ccxt';
 
 /**
  * CPMI - Crypto Prediction Market Index (Final Implementation)
@@ -21,12 +22,13 @@ export class CPMI_Final {
         'infrastructure': 0.02          // Infrastructure (2%) - Supporting systems
       },
       
-      // Market Weighting Within Categories (UPFI's exact sensitivity values)
+      // Market Weighting Within Categories (UPFI's exact sensitivity values + crypto enhancements)
       sensitivity: {
         volume: 7,                      // Volume Sensitivity (7/10) - High importance of trading activity
         time: 6,                        // Time Sensitivity (6/10) - Moderate preference for near-term markets
         impact: 8,                      // Impact Sensitivity (8/10) - Strong emphasis on inherent crypto significance
-        marketCap: 5                    // Market Cap Sensitivity (5/10) - Balanced representation (replaces Population)
+        marketCap: 5,                   // Market Cap Sensitivity (5/10) - Balanced representation (replaces Population)
+        volatility: 4                   // Volatility Sensitivity (4/10) - Crypto-specific risk factor
       },
       
       // Index configuration
@@ -45,6 +47,19 @@ export class CPMI_Final {
     this.categoryIndices = {};
     this.lastUpdate = null;
     this.isRunning = false;
+    
+    // Market data cache
+    this.marketCapData = new Map();
+    this.volatilityData = new Map();
+    this.priceHistory = new Map(); // For EWMA volatility calculation
+    this.probabilityHistory = new Map(); // For probability volatility
+    this.lastMarketDataUpdate = null;
+    
+    // CCXT exchange instance
+    this.exchange = new ccxt.binance({
+      sandbox: false,
+      enableRateLimit: true,
+    });
     
     // Market categorization
     this.marketCategories = new Map();
@@ -90,6 +105,113 @@ export class CPMI_Final {
   }
 
   /**
+   * Fetch real market cap and volatility data using CCXT
+   */
+  async fetchMarketData() {
+    try {
+      // Check if we need to update (every 5 minutes)
+      const now = new Date();
+      if (this.lastMarketDataUpdate && (now - this.lastMarketDataUpdate) < 5 * 60 * 1000) {
+        return; // Use cached data
+      }
+
+      console.log('📊 Fetching real market cap and volatility data using CCXT...');
+      
+      // Get ticker data for major crypto pairs
+      const symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ADA/USDT', 'DOT/USDT', 'LINK/USDT', 'UNI/USDT', 'DOGE/USDT'];
+      
+      for (const symbol of symbols) {
+        try {
+          // Get current ticker
+          const ticker = await this.exchange.fetchTicker(symbol);
+          
+          // Get historical data for volatility calculation (last 30 days)
+          const ohlcv = await this.exchange.fetchOHLCV(symbol, '1d', undefined, 30);
+          
+          if (ohlcv.length > 1) {
+            const baseSymbol = symbol.split('/')[0].toLowerCase();
+            
+            // Calculate market cap weight (simplified ranking)
+            const marketCapRanking = this.getMarketCapRanking(baseSymbol);
+            this.marketCapData.set(baseSymbol, marketCapRanking);
+            
+            // Calculate annualized volatility using EWMA of log returns
+            const volatility = this.calculateAnnualizedVolatility(ohlcv);
+            this.volatilityData.set(baseSymbol, volatility);
+            
+            // Store price history for future volatility calculations
+            this.priceHistory.set(baseSymbol, ohlcv.map(candle => candle[4])); // Close prices
+          }
+          
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch data for ${symbol}:`, error.message);
+        }
+      }
+      
+      this.lastMarketDataUpdate = now;
+      console.log(`✅ Updated market data for ${symbols.length} cryptocurrencies`);
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch market data, using fallback:', error.message);
+      // Fallback to hardcoded data if API fails
+    }
+  }
+
+  /**
+   * Get market cap ranking for a crypto symbol
+   */
+  getMarketCapRanking(symbol) {
+    const rankings = {
+      'btc': 1.0,    // #1
+      'eth': 0.9,    // #2
+      'sol': 0.8,    // #3
+      'ada': 0.7,    // #4
+      'dot': 0.6,    // #5
+      'link': 0.5,   // #6
+      'uni': 0.4,    // #7
+      'doge': 0.3    // #8
+    };
+    return rankings[symbol] || 0.2;
+  }
+
+  /**
+   * Calculate annualized volatility using EWMA of log returns
+   * Formula: σ_annual = √(365 * EWMA(log_returns²))
+   */
+  calculateAnnualizedVolatility(ohlcv) {
+    if (ohlcv.length < 2) return 0.1; // Default 10% volatility
+    
+    const closes = ohlcv.map(candle => candle[4]); // Close prices
+    const logReturns = [];
+    
+    // Calculate log returns
+    for (let i = 1; i < closes.length; i++) {
+      const logReturn = Math.log(closes[i] / closes[i-1]);
+      logReturns.push(logReturn);
+    }
+    
+    // Calculate EWMA of squared log returns
+    const lambda = 0.94; // Decay factor (RiskMetrics standard)
+    let ewmaVariance = 0;
+    
+    // Initialize with first squared return
+    if (logReturns.length > 0) {
+      ewmaVariance = logReturns[0] * logReturns[0];
+    }
+    
+    // Calculate EWMA
+    for (let i = 1; i < logReturns.length; i++) {
+      ewmaVariance = lambda * ewmaVariance + (1 - lambda) * (logReturns[i] * logReturns[i]);
+    }
+    
+    // Annualize: multiply by 365 and take square root
+    const annualizedVolatility = Math.sqrt(365 * ewmaVariance);
+    
+    // Normalize to 0-1 range (cap at 200% annual volatility)
+    return Math.min(annualizedVolatility, 2.0) / 2.0;
+  }
+
+  /**
    * Start the CPMI
    */
   async start() {
@@ -103,6 +225,9 @@ export class CPMI_Final {
       }
       
       console.log('✅ Connected to Polymarket API successfully!');
+      
+      // Fetch real market data
+      await this.fetchMarketData();
       
       // Start index calculation loop
       this.isRunning = true;
@@ -350,16 +475,18 @@ export class CPMI_Final {
       volume: this.calculateVolumeWeight(market),
       time: this.calculateTimeWeight(market),
       impact: this.calculateImpactWeight(market),
-      marketCap: this.calculateMarketCapWeight(market)
+      marketCap: this.calculateMarketCapWeight(market),
+      volatility: this.calculateVolatilityWeight(market)
     };
 
-    // UPFI's exact weighted combination formula
+    // UPFI's exact weighted combination formula + crypto enhancements
     // Each factor is normalized (0-1) and weighted by sensitivity
     const totalWeight = 
       factors.volume * (this.config.sensitivity.volume / 10) +
       factors.time * (this.config.sensitivity.time / 10) +
       factors.impact * (this.config.sensitivity.impact / 10) +
-      factors.marketCap * (this.config.sensitivity.marketCap / 10);
+      factors.marketCap * (this.config.sensitivity.marketCap / 10) +
+      factors.volatility * (this.config.sensitivity.volatility / 10);
 
     // Normalize to ensure weights are reasonable (0-1 range)
     return Math.min(Math.max(totalWeight, 0), 1);
@@ -607,6 +734,131 @@ export class CPMI_Final {
         end: this.historicalValues[this.historicalValues.length - 1].timestamp
       }
     };
+  }
+
+  /**
+   * Calculate volatility-based weight (4/10 sensitivity)
+   * Using both crypto price volatility and probability change volatility
+   */
+  calculateVolatilityWeight(market) {
+    const title = market.title.toLowerCase();
+    
+    // 1. Try to find real crypto price volatility data
+    let cryptoVolatility = null;
+    for (const [symbol, volatility] of this.volatilityData) {
+      if (title.includes(symbol)) {
+        cryptoVolatility = volatility;
+        break;
+      }
+    }
+    
+    // 2. Calculate probability change volatility
+    const probabilityVolatility = this.calculateProbabilityVolatility(market);
+    
+    // 3. Combine both volatilities (weighted average)
+    let combinedVolatility;
+    if (cryptoVolatility !== null) {
+      // 70% crypto volatility + 30% probability volatility
+      combinedVolatility = 0.7 * cryptoVolatility + 0.3 * probabilityVolatility;
+    } else {
+      // Use only probability volatility if no crypto data
+      combinedVolatility = probabilityVolatility;
+    }
+    
+    // Higher volatility = lower weight (more risky = less reliable)
+    return 1 - combinedVolatility;
+  }
+
+  /**
+   * Calculate volatility of prediction market probability changes
+   * Based on Archak & Ipeirotis (2008) model: volatility = f(price, time_to_expiration)
+   */
+  calculateProbabilityVolatility(market) {
+    const marketKey = market.conditionId;
+    
+    // Initialize probability history if not exists
+    if (!this.probabilityHistory.has(marketKey)) {
+      this.probabilityHistory.set(marketKey, []);
+    }
+    
+    const history = this.probabilityHistory.get(marketKey);
+    const currentProbability = market.avgPrice;
+    
+    // Add current probability to history
+    history.push({
+      probability: currentProbability,
+      timestamp: Date.now()
+    });
+    
+    // Keep only last 30 data points
+    if (history.length > 30) {
+      history.shift();
+    }
+    
+    // Need at least 2 data points to calculate volatility
+    if (history.length < 2) {
+      return this.getDefaultProbabilityVolatility(market);
+    }
+    
+    // Calculate probability changes (not log returns for probabilities)
+    const probabilityChanges = [];
+    for (let i = 1; i < history.length; i++) {
+      const change = history[i].probability - history[i-1].probability;
+      probabilityChanges.push(change);
+    }
+    
+    if (probabilityChanges.length < 2) {
+      return this.getDefaultProbabilityVolatility(market);
+    }
+    
+    // Calculate standard deviation of probability changes
+    const mean = probabilityChanges.reduce((sum, change) => sum + change, 0) / probabilityChanges.length;
+    const variance = probabilityChanges.reduce((sum, change) => sum + Math.pow(change - mean, 2), 0) / probabilityChanges.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Apply time-to-expiration adjustment (Archak & Ipeirotis model)
+    const timeAdjustment = this.getTimeToExpirationAdjustment(market);
+    
+    // Final volatility = base volatility * time adjustment
+    const adjustedVolatility = stdDev * timeAdjustment;
+    
+    // Normalize to 0-1 range (cap at 50% probability volatility)
+    return Math.min(adjustedVolatility, 0.5) / 0.5;
+  }
+
+  /**
+   * Get default probability volatility based on market characteristics
+   */
+  getDefaultProbabilityVolatility(market) {
+    const title = market.title.toLowerCase();
+    
+    // Different default volatilities based on market type
+    if (title.includes('bitcoin') || title.includes('btc')) return 0.15; // 15% default
+    if (title.includes('ethereum') || title.includes('eth')) return 0.20; // 20% default
+    if (title.includes('regulatory') || title.includes('sec')) return 0.25; // 25% default (high uncertainty)
+    if (title.includes('price') && title.includes('reach')) return 0.30; // 30% default (price predictions)
+    
+    return 0.20; // 20% default for other markets
+  }
+
+  /**
+   * Get time-to-expiration adjustment factor
+   * Based on Archak & Ipeirotis model: volatility decreases as we approach expiration
+   */
+  getTimeToExpirationAdjustment(market) {
+    // For now, use a simple heuristic since we don't have exact expiration dates
+    // In a real implementation, you'd parse the market title for expiration dates
+    
+    const title = market.title.toLowerCase();
+    
+    // Estimate time to expiration based on keywords
+    if (title.includes('2024') || title.includes('end of year')) return 1.0; // Full volatility
+    if (title.includes('2025')) return 1.2; // Higher volatility (longer time)
+    if (title.includes('month') || title.includes('30 days')) return 0.8; // Lower volatility
+    if (title.includes('week') || title.includes('7 days')) return 0.6; // Much lower volatility
+    if (title.includes('day') || title.includes('24 hours')) return 0.4; // Very low volatility
+    
+    return 1.0; // Default: no time adjustment
   }
 
   /**

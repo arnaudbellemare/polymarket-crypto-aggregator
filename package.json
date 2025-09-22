@@ -9,13 +9,20 @@
     "cpmi": "node src/cpmi-final-demo.js",
     "dev": "node --watch src/index.js"
   },
-  "keywords": ["polymarket", "crypto", "market-data", "websocket", "api"],
+  "keywords": [
+    "polymarket",
+    "crypto",
+    "market-data",
+    "websocket",
+    "api"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "ws": "^8.14.2",
     "axios": "^1.6.0",
-    "dotenv": "^16.3.1"
+    "ccxt": "^4.5.5",
+    "dotenv": "^16.3.1",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
