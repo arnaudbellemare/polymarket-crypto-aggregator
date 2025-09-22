@@ -56,7 +56,7 @@ export class CPMI_Final {
     this.lastMarketDataUpdate = null;
     
     // CCXT exchange instance
-    this.exchange = new ccxt.binance({
+    this.exchange = new ccxt.kraken({
       sandbox: false,
       enableRateLimit: true,
     });
@@ -115,10 +115,10 @@ export class CPMI_Final {
         return; // Use cached data
       }
 
-      console.log('📊 Fetching real market cap and volatility data using CCXT...');
+      console.log('📊 Fetching real market cap and volatility data using CCXT (Kraken)...');
       
-      // Get ticker data for major crypto pairs
-      const symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ADA/USDT', 'DOT/USDT', 'LINK/USDT', 'UNI/USDT', 'DOGE/USDT'];
+      // Get ticker data for major crypto pairs (Kraken format)
+      const symbols = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'ADA/USD', 'DOT/USD', 'LINK/USD', 'UNI/USD', 'DOGE/USD'];
       
       for (const symbol of symbols) {
         try {
