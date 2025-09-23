@@ -333,7 +333,7 @@ export class CPMI_Final {
         const timeDecayFactor = this.calculateOverallTimeDecay(cryptoMarkets);
         const adjustedProbability = overallProbability * timeDecayFactor;
         
-        this.currentIndex = this.config.baselineValue + (adjustedProbability - 50);
+        this.currentIndex = this.config.baselineValue + ((adjustedProbability * 100) - 50);
         
         // Apply smoothing (1-hour SMA) with enhanced metadata
         this.historicalValues.push({
