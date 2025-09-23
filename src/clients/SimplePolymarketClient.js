@@ -189,6 +189,63 @@ export class SimplePolymarketClient {
   }
 
   /**
+   * Get crypto-specific trades by filtering for crypto keywords
+   * @param {number} limit - Number of trades to fetch
+   */
+  async getCryptoTrades(limit = 1000) {
+    try {
+      const params = {
+        limit: Math.min(limit, 10000),
+        takerOnly: true
+      };
+      
+      const response = await this.client.get('/trades', { params });
+      
+      if (response.data && Array.isArray(response.data)) {
+        // Filter for crypto-related trades (more strict)
+        const cryptoKeywords = [
+          'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
+          'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 
+          'dogecoin', 'doge', 'litecoin', 'ltc', 'chainlink', 'link',
+          'avalanche', 'avax', 'polygon', 'matic', 'defi', 'nft',
+          'binance', 'coinbase', 'kraken', 'exchange', 'mining', 'staking'
+        ];
+        
+        // Exclude non-crypto keywords
+        const excludeKeywords = [
+          'election', 'mayor', 'mayoral', 'votes', 'voting', 'senate', 'congress',
+          'tennis', 'sports', 'championship', 'tournament', 'game', 'match',
+          'trump', 'biden', 'president', 'political', 'politics'
+        ];
+        
+        const cryptoTrades = response.data.filter(trade => {
+          const title = trade.title?.toLowerCase() || '';
+          const slug = trade.slug?.toLowerCase() || '';
+          const eventSlug = trade.eventSlug?.toLowerCase() || '';
+          
+          // First check if it contains crypto keywords
+          const hasCryptoKeywords = cryptoKeywords.some(keyword => 
+            title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
+          );
+          
+          // Then check if it should be excluded (non-crypto)
+          const shouldExclude = excludeKeywords.some(keyword => 
+            title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
+          );
+          
+          return hasCryptoKeywords && !shouldExclude;
+        });
+        
+        return new ApiResponse(true, cryptoTrades);
+      }
+      
+      return new ApiResponse(true, response.data);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
    * Process trade data to extract crypto market information
    * @param {Array} trades - Array of trade objects
    */
