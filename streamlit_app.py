@@ -347,10 +347,10 @@ def main():
             fig.add_hline(y=100, line_dash="dash", line_color="gray", 
                          annotation_text="Neutral (100)")
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with col2:
-            st.dataframe(category_df, use_container_width=True)
+            st.dataframe(category_df, width='stretch')
 
         # Market Details Section
         st.markdown('<h2 class="section-header">🔍 Market Analysis</h2>', unsafe_allow_html=True)
@@ -444,7 +444,7 @@ def main():
                             }
                         ))
                         fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig,width='stretch')
 
         # Methodology Section
         st.markdown('<h2 class="section-header">📚 CPMI Methodology</h2>', unsafe_allow_html=True)
@@ -529,7 +529,7 @@ def main():
                     height=400,
                     showlegend=False
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig,width='stretch')
                 
                 # Statistics
                 if stats:
