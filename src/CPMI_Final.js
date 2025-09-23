@@ -270,30 +270,49 @@ export class CPMI_Final {
    */
   async calculateIndex() {
     try {
-      console.log('📊 Fetching trade data from Polymarket...');
+      console.log('📊 Fetching crypto markets from Polymarket Gamma API...');
       
-      // Fetch trades with higher limit to get more crypto markets
-      const tradesResponse = await this.client.getCryptoTrades(10000);  // Max limit
-      if (!tradesResponse.success) {
-        throw new Error(`Failed to fetch trades: ${tradesResponse.error}`);
+      // Fetch crypto markets using the new Gamma API
+      const marketsResponse = await this.client.getCryptoOnlyMarkets(1000);
+      let cryptoMarkets;
+      
+      if (!marketsResponse.success) {
+        console.log('⚠️ Markets API failed, falling back to trades API...');
+        // Fallback to trades API
+        const tradesResponse = await this.client.getCryptoTrades(10000);
+        if (!tradesResponse.success) {
+          throw new Error(`Failed to fetch data: ${tradesResponse.error}`);
+        }
+        
+        const trades = tradesResponse.data;
+        console.log(`📈 Fetched ${trades.length} recent trades (fallback)`);
+        
+        const cryptoTrades = this.filterCryptoTrades(trades);
+        console.log(`🔍 Found ${cryptoTrades.length} crypto-related trades`);
+        
+        if (cryptoTrades.length === 0) {
+          console.log('⚠️ No crypto trades found in recent data');
+          return;
+        }
+        
+        cryptoMarkets = this.processCryptoTrades(cryptoTrades);
+        this.lastProcessedMarkets = cryptoMarkets;
+        console.log(`📊 Processed ${cryptoMarkets.length} crypto markets from trades`);
+      } else {
+        // Use markets API data
+        const markets = marketsResponse.data;
+        console.log(`📈 Fetched ${markets.length} crypto markets from Gamma API`);
+        
+        if (markets.length === 0) {
+          console.log('⚠️ No crypto markets found');
+          return;
+        }
+        
+        // Process markets data
+        cryptoMarkets = this.processMarketsData(markets);
+        this.lastProcessedMarkets = cryptoMarkets; // Store for export
+        console.log(`📊 Processed ${cryptoMarkets.length} crypto markets from markets API`);
       }
-      
-      const trades = tradesResponse.data;
-      console.log(`📈 Fetched ${trades.length} recent trades`);
-      
-      // Filter for crypto-related trades
-      const cryptoTrades = this.filterCryptoTrades(trades);
-      console.log(`🔍 Found ${cryptoTrades.length} crypto-related trades`);
-      
-      if (cryptoTrades.length === 0) {
-        console.log('⚠️ No crypto trades found in recent data');
-        return;
-      }
-      
-      // Process crypto markets
-      const cryptoMarkets = this.processCryptoTrades(cryptoTrades);
-      this.lastProcessedMarkets = cryptoMarkets; // Store for export
-      console.log(`📊 Processed ${cryptoMarkets.length} crypto markets`);
       
       // Calculate category indices using improved methodology
       const categoryIndices = {};
@@ -371,6 +390,10 @@ export class CPMI_Final {
 
       this.categoryIndices = categoryIndices;
       this.lastUpdate = new Date();
+      
+      // Store results for getResults() method
+      this.lastCPMI = this.currentIndex;
+      this.lastCategoryIndices = categoryIndices;
 
       const interpretation = this.getIndexInterpretation();
       const timeDecay = this.calculateOverallTimeDecay(cryptoMarkets);
@@ -459,6 +482,72 @@ export class CPMI_Final {
     });
     
     return Array.from(cryptoMarkets.values());
+  }
+
+  /**
+   * Process markets data from Gamma API
+   */
+  processMarketsData(markets) {
+    const cryptoMarkets = [];
+    
+    markets.forEach(market => {
+      // Convert market data to the format expected by CPMI
+      const processedMarket = {
+        conditionId: market.conditionId || market.id,
+        title: market.question,
+        slug: market.slug,
+        eventSlug: market.events && market.events[0] ? market.events[0].slug : null,
+        icon: market.icon,
+        category: market.category,
+        outcomes: market.outcomes,
+        outcomePrices: market.outcomePrices,
+        volume: parseFloat(market.volume || 0),
+        liquidity: parseFloat(market.liquidity || 0),
+        active: market.active,
+        closed: market.closed,
+        endDate: market.endDate,
+        startDate: market.startDate,
+        // Calculate average price from outcome prices
+        avgPrice: this.calculateMarketPrice(market),
+        // Additional market metadata
+        marketType: market.marketType,
+        formatType: market.formatType,
+        volume24hr: parseFloat(market.volume24hr || 0),
+        volume1wk: parseFloat(market.volume1wk || 0),
+        volume1mo: parseFloat(market.volume1mo || 0),
+        volume1yr: parseFloat(market.volume1yr || 0),
+        // For compatibility with existing CPMI logic
+        trades: [], // Markets API doesn't provide individual trades
+        totalVolume: parseFloat(market.volume || 0),
+        totalValue: parseFloat(market.volume || 0) * this.calculateMarketPrice(market),
+        buyVolume: 0, // Not available in markets API
+        sellVolume: 0, // Not available in markets API
+        buyTrades: 0, // Not available in markets API
+        sellTrades: 0, // Not available in markets API
+        lastTrade: null // Not available in markets API
+      };
+      
+      cryptoMarkets.push(processedMarket);
+    });
+    
+    return cryptoMarkets;
+  }
+
+  /**
+   * Calculate market price from outcome prices
+   */
+  calculateMarketPrice(market) {
+    if (!market.outcomePrices || !Array.isArray(market.outcomePrices)) {
+      return 0.5; // Default to 50% if no price data
+    }
+    
+    // For binary markets, use the first outcome price
+    if (market.outcomePrices.length >= 1) {
+      const price = parseFloat(market.outcomePrices[0]);
+      return isNaN(price) ? 0.5 : price;
+    }
+    
+    return 0.5; // Default fallback
   }
 
   /**
@@ -1487,5 +1576,28 @@ export class CPMI_Final {
     }
     
     return 'uncategorized';
+  }
+
+  /**
+   * Get the latest CPMI results
+   */
+  getResults() {
+    if (!this.lastProcessedMarkets) {
+      return null;
+    }
+
+    const totalMarkets = this.lastProcessedMarkets.length;
+    const activeMarkets = this.lastProcessedMarkets.filter(m => m.active).length;
+    const totalVolume = this.lastProcessedMarkets.reduce((sum, m) => sum + (m.volume || 0), 0);
+
+    return {
+      cpmi: this.lastCPMI || 0,
+      totalMarkets,
+      activeMarkets,
+      totalVolume,
+      categoryIndices: this.lastCategoryIndices || {},
+      markets: this.lastProcessedMarkets,
+      lastUpdate: this.lastUpdate
+    };
   }
 }
