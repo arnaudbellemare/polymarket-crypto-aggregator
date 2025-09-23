@@ -94,7 +94,8 @@ export class CPMI_Final {
     // Major Altcoins (10%)
     this.marketCategories.set('major-altcoins', [
       'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 'chainlink',
-      'link', 'litecoin', 'ltc', 'avalanche', 'avax', 'polygon', 'matic'
+      'link', 'litecoin', 'ltc', 'avalanche', 'avax', 'polygon', 'matic',
+      'dogecoin', 'doge'
     ]);
 
     // Infrastructure (5%)
