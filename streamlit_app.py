@@ -47,7 +47,7 @@ st.markdown("""
 # API Configuration
 API_BASE_URL = st.sidebar.text_input(
     "API URL", 
-    value="http://your-vm-ip:3001",
+    value="http://35.203.43.14:3000",
     help="Enter your VM IP address where the API is running"
 )
 
