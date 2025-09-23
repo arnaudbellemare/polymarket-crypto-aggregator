@@ -747,7 +747,33 @@ export class CPMI_Final {
    * Extract probability for directional markets
    */
   extractDirectionalProbability(market) {
-    // For directional markets, we need to analyze the direction keywords
+    // For "Up or Down" markets, we need to calculate bullish probability
+    // by considering trade outcomes and directions
+    const title = market.title.toLowerCase();
+    
+    if (title.includes('up or down') || title.includes('up/down')) {
+      // Calculate bullish probability from trade outcomes
+      let bullishValue = 0;
+      let bearishValue = 0;
+      
+      if (market.trades && market.trades.length > 0) {
+        market.trades.forEach(trade => {
+          const value = trade.size * trade.price;
+          if (trade.outcome && trade.outcome.toLowerCase().includes('up')) {
+            bullishValue += value;
+          } else if (trade.outcome && trade.outcome.toLowerCase().includes('down')) {
+            bearishValue += value;
+          }
+        });
+        
+        const totalValue = bullishValue + bearishValue;
+        if (totalValue > 0) {
+          return (bullishValue / totalValue) * 100;
+        }
+      }
+    }
+    
+    // For other directional markets, analyze keywords
     const targetInfo = this.extractTargetFromMarket(market);
     
     if (targetInfo && targetInfo.type === 'direction') {
