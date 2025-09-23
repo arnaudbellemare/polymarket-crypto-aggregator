@@ -20,6 +20,7 @@ export class CPMI_Final {
         'regulatory-outcomes': 0.20,    // Regulatory Outcomes (20%) - Policy impact
         'major-altcoins': 0.08,         // Major Altcoins (8%) - Secondary markets
         'infrastructure': 0.02          // Infrastructure (2%) - Supporting systems
+        // Note: 'uncategorized' markets are excluded from CPMI calculation
       },
       
       // Market Weighting Within Categories (UPFI's exact sensitivity values + crypto enhancements)
@@ -296,6 +297,11 @@ export class CPMI_Final {
       let totalAccuracyWeight = 0;
 
       for (const [category, keywords] of this.marketCategories) {
+        // Skip uncategorized markets - they shouldn't be in the calculation
+        if (category === 'uncategorized') {
+          continue;
+        }
+        
         const categoryIndex = this.calculateCategoryIndex(category, keywords, cryptoMarkets);
         categoryIndices[category] = categoryIndex;
 
