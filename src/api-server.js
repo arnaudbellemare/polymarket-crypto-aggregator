@@ -118,11 +118,11 @@ async function start() {
     await cpmi.start();
     
     // Start Express server
-    app.listen(port, () => {
+    app.listen(port, '0.0.0.0', () => {
       console.log(`✅ CPMI API Server running on port ${port}`);
-      console.log(`📊 Health check: http://localhost:${port}/health`);
-      console.log(`📈 Current CPMI: http://localhost:${port}/api/cpmi/current`);
-      console.log(`📚 Full export: http://localhost:${port}/api/cpmi/export`);
+      console.log(`📊 Health check: http://0.0.0.0:${port}/health`);
+      console.log(`📈 Current CPMI: http://0.0.0.0:${port}/api/cpmi/current`);
+      console.log(`📚 Full export: http://0.0.0.0:${port}/api/cpmi/export`);
     });
     
   } catch (error) {
