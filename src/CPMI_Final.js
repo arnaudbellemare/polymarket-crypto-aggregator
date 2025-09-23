@@ -313,24 +313,21 @@ export class CPMI_Final {
           const categoryWeight = this.config.categoryWeights[category];
           
           // Calculate multi-factor weights for this category
-          const accuracyWeight = this.calculateCategoryAccuracy(category, cryptoMarkets);
           const volumeWeight = this.calculateCategoryVolumeWeight(category, cryptoMarkets);
           const timeWeight = this.calculateCategoryTimeWeight(category, cryptoMarkets);
           
-          // Combined weight: volume × time (temporarily removing accuracy weighting)
+          // Combined weight: volume × time (removed accuracy weighting entirely)
           const combinedWeight = volumeWeight * timeWeight;
           const adjustedProbability = categoryIndex * combinedWeight;
           
           totalWeightedProbability += adjustedProbability * categoryWeight;
           totalWeight += categoryWeight;
-          totalAccuracyWeight += accuracyWeight * categoryWeight;
         }
       }
 
-      // Calculate overall CPMI with accuracy and time adjustments
+      // Calculate overall CPMI with time adjustments
       if (totalWeight > 0) {
         const overallProbability = totalWeightedProbability / totalWeight;
-        const averageAccuracy = totalAccuracyWeight / totalWeight;
         
         // Apply time decay adjustment to the final index
         const timeDecayFactor = this.calculateOverallTimeDecay(cryptoMarkets);
@@ -343,7 +340,6 @@ export class CPMI_Final {
           timestamp: new Date(),
           value: this.currentIndex,
           probability: overallProbability,
-          accuracy: averageAccuracy,
           timeDecay: timeDecayFactor,
           rawProbability: totalWeightedProbability / totalWeight
         });
@@ -365,10 +361,9 @@ export class CPMI_Final {
       this.lastUpdate = new Date();
 
       const interpretation = this.getIndexInterpretation();
-      const accuracy = totalAccuracyWeight / totalWeight;
       const timeDecay = this.calculateOverallTimeDecay(cryptoMarkets);
       const volumeWeight = this.calculateOverallVolumeWeight(cryptoMarkets);
-      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${interpretation}) [Accuracy: ${(accuracy * 100).toFixed(1)}%, Volume: ${(volumeWeight * 100).toFixed(1)}%, Time: ${(timeDecay * 100).toFixed(1)}%]`);
+      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${interpretation}) [Volume: ${(volumeWeight * 100).toFixed(1)}%, Time: ${(timeDecay * 100).toFixed(1)}%]`);
       
     } catch (error) {
       console.error('❌ Error calculating CPMI:', error);
