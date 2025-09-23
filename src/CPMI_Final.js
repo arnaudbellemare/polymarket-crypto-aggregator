@@ -268,7 +268,7 @@ export class CPMI_Final {
       console.log('📊 Fetching trade data from Polymarket...');
       
       // Fetch recent trades
-      const tradesResponse = await this.client.getCryptoTrades(2000);
+      const tradesResponse = await this.client.getCryptoTrades(8000);
       if (!tradesResponse.success) {
         throw new Error(`Failed to fetch trades: ${tradesResponse.error}`);
       }
