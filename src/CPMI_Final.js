@@ -301,9 +301,14 @@ export class CPMI_Final {
         if (categoryIndex !== null) {
           const categoryWeight = this.config.categoryWeights[category];
           
-          // Calculate accuracy-weighted probability for this category
+          // Calculate multi-factor weights for this category
           const accuracyWeight = this.calculateCategoryAccuracy(category, cryptoMarkets);
-          const adjustedProbability = categoryIndex * accuracyWeight;
+          const volumeWeight = this.calculateCategoryVolumeWeight(category, cryptoMarkets);
+          const timeWeight = this.calculateCategoryTimeWeight(category, cryptoMarkets);
+          
+          // Combined weight: accuracy × volume × time
+          const combinedWeight = accuracyWeight * volumeWeight * timeWeight;
+          const adjustedProbability = categoryIndex * combinedWeight;
           
           totalWeightedProbability += adjustedProbability * categoryWeight;
           totalWeight += categoryWeight;
@@ -351,7 +356,8 @@ export class CPMI_Final {
       const interpretation = this.getIndexInterpretation();
       const accuracy = totalAccuracyWeight / totalWeight;
       const timeDecay = this.calculateOverallTimeDecay(cryptoMarkets);
-      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${interpretation}) [Accuracy: ${(accuracy * 100).toFixed(1)}%, Time Decay: ${(timeDecay * 100).toFixed(1)}%]`);
+      const volumeWeight = this.calculateOverallVolumeWeight(cryptoMarkets);
+      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${interpretation}) [Accuracy: ${(accuracy * 100).toFixed(1)}%, Volume: ${(volumeWeight * 100).toFixed(1)}%, Time: ${(timeDecay * 100).toFixed(1)}%]`);
       
     } catch (error) {
       console.error('❌ Error calculating CPMI:', error);
@@ -513,15 +519,80 @@ export class CPMI_Final {
 
   /**
    * Calculate volume-based weight (7/10 sensitivity)
-   * Following UPFI's volume-weighted approach
+   * Following UPFI's volume-weighted approach with crypto-specific enhancements
    */
   calculateVolumeWeight(market) {
     const volume = market.totalVolume || 0;
+    const tradeCount = market.tradeCount || 0;
+    const avgTradeSize = volume > 0 && tradeCount > 0 ? volume / tradeCount : 0;
     
-    // UPFI approach: Higher-volume markets receive proportionally increased weight
-    // Normalize volume relative to typical market volumes
-    // Cap at 1.0 to prevent extreme outliers from dominating
-    return Math.min(volume / 1000, 1);
+    // Multi-factor volume analysis
+    const volumeScore = this.calculateVolumeScore(volume, tradeCount, avgTradeSize);
+    const liquidityScore = this.calculateLiquidityScore(market);
+    const activityScore = this.calculateActivityScore(market);
+    
+    // Weighted combination of volume factors
+    const totalScore = (volumeScore * 0.5) + (liquidityScore * 0.3) + (activityScore * 0.2);
+    
+    // Apply logarithmic scaling to prevent extreme outliers from dominating
+    // while still giving higher weight to more active markets
+    return Math.min(Math.log10(totalScore + 1) / 3, 1.0); // Normalize to 0-1 range
+  }
+  
+  /**
+   * Calculate volume score based on total volume and trade count
+   */
+  calculateVolumeScore(volume, tradeCount, avgTradeSize) {
+    // Base volume score (normalized)
+    const baseVolumeScore = Math.min(volume / 10000, 1.0); // Cap at 10k volume
+    
+    // Trade count bonus (more trades = more confidence)
+    const tradeCountScore = Math.min(tradeCount / 100, 1.0); // Cap at 100 trades
+    
+    // Average trade size penalty (very large trades might be manipulation)
+    const avgTradePenalty = avgTradeSize > 1000 ? 0.8 : 1.0;
+    
+    return (baseVolumeScore * 0.6 + tradeCountScore * 0.4) * avgTradePenalty;
+  }
+  
+  /**
+   * Calculate liquidity score based on recent trading activity
+   */
+  calculateLiquidityScore(market) {
+    // Check if market has recent activity (within last 24 hours)
+    const now = Date.now();
+    const lastTradeTime = market.lastTradeTime || 0;
+    const hoursSinceLastTrade = (now - lastTradeTime) / (1000 * 60 * 60);
+    
+    // Liquidity decreases with time since last trade
+    let liquidityScore = 1.0;
+    if (hoursSinceLastTrade > 24) {
+      liquidityScore = 0.3; // Very low liquidity
+    } else if (hoursSinceLastTrade > 12) {
+      liquidityScore = 0.6; // Low liquidity
+    } else if (hoursSinceLastTrade > 6) {
+      liquidityScore = 0.8; // Moderate liquidity
+    }
+    
+    return liquidityScore;
+  }
+  
+  /**
+   * Calculate activity score based on trading patterns
+   */
+  calculateActivityScore(market) {
+    const volume = market.totalVolume || 0;
+    const tradeCount = market.tradeCount || 0;
+    
+    // Activity score based on both volume and trade frequency
+    const volumeActivity = Math.min(volume / 5000, 1.0);
+    const tradeActivity = Math.min(tradeCount / 50, 1.0);
+    
+    // Markets with both high volume AND high trade count get bonus
+    const combinedActivity = (volumeActivity + tradeActivity) / 2;
+    const activityBonus = (volumeActivity > 0.5 && tradeActivity > 0.5) ? 1.2 : 1.0;
+    
+    return Math.min(combinedActivity * activityBonus, 1.0);
   }
 
   /**
@@ -1081,6 +1152,46 @@ export class CPMI_Final {
   }
   
   /**
+   * Calculate category volume weight
+   */
+  calculateCategoryVolumeWeight(category, cryptoMarkets) {
+    const categoryMarkets = cryptoMarkets.filter(market => 
+      this.isMarketInCategory(market, category)
+    );
+    
+    if (categoryMarkets.length === 0) {
+      return 0.5; // Default neutral volume weight
+    }
+    
+    // Calculate average volume weight for markets in this category
+    const volumeWeights = categoryMarkets.map(market => 
+      this.calculateVolumeWeight(market)
+    );
+    
+    return volumeWeights.reduce((sum, weight) => sum + weight, 0) / volumeWeights.length;
+  }
+  
+  /**
+   * Calculate category time weight
+   */
+  calculateCategoryTimeWeight(category, cryptoMarkets) {
+    const categoryMarkets = cryptoMarkets.filter(market => 
+      this.isMarketInCategory(market, category)
+    );
+    
+    if (categoryMarkets.length === 0) {
+      return 0.5; // Default neutral time weight
+    }
+    
+    // Calculate average time weight for markets in this category
+    const timeWeights = categoryMarkets.map(market => 
+      this.getTimeToExpirationAdjustment(market)
+    );
+    
+    return timeWeights.reduce((sum, weight) => sum + weight, 0) / timeWeights.length;
+  }
+  
+  /**
    * Calculate overall time decay factor for all markets
    */
   calculateOverallTimeDecay(cryptoMarkets) {
@@ -1094,6 +1205,22 @@ export class CPMI_Final {
     );
     
     return timeDecays.reduce((sum, decay) => sum + decay, 0) / timeDecays.length;
+  }
+  
+  /**
+   * Calculate overall volume weight for all markets
+   */
+  calculateOverallVolumeWeight(cryptoMarkets) {
+    if (cryptoMarkets.length === 0) {
+      return 1.0; // No volume adjustment if no markets
+    }
+    
+    // Calculate average volume weight across all markets
+    const volumeWeights = cryptoMarkets.map(market => 
+      this.calculateVolumeWeight(market)
+    );
+    
+    return volumeWeights.reduce((sum, weight) => sum + weight, 0) / volumeWeights.length;
   }
   
   /**
