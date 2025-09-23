@@ -17,17 +17,17 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
-    /* Main theme colors - High contrast for readability */
+    /* Main theme colors - Balanced for readability */
     :root {
         --primary-color: #1f2937;
-        --secondary-color: #3b82f6;
+        --secondary-color: #2563eb;
         --success-color: #059669;
         --danger-color: #dc2626;
         --warning-color: #d97706;
         --background-color: #ffffff;
-        --card-background: #f9fafb;
-        --text-primary: #111827;
-        --text-secondary: #374151;
+        --card-background: #f8fafc;
+        --text-primary: #1f2937;
+        --text-secondary: #4b5563;
         --border-color: #e5e7eb;
     }
     
@@ -98,19 +98,19 @@ st.markdown("""
         font-size: 0.9rem;
     }
     
-    /* Sentiment colors */
+    /* Sentiment colors - More readable */
     .bullish {
-        color: var(--success-color) !important;
+        color: #059669 !important;
         font-weight: 700;
     }
     
     .bearish {
-        color: var(--danger-color) !important;
+        color: #dc2626 !important;
         font-weight: 700;
     }
     
     .neutral {
-        color: var(--warning-color) !important;
+        color: #d97706 !important;
         font-weight: 700;
     }
     
@@ -121,7 +121,7 @@ st.markdown("""
         font-weight: 600;
         margin: 2rem 0 1rem 0;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--secondary-color);
+        border-bottom: 2px solid #2563eb;
     }
     
     /* Data tables */
@@ -231,7 +231,7 @@ st.markdown("""
     
     /* Button styling */
     .stButton > button {
-        background: linear-gradient(90deg, var(--secondary-color), #1d4ed8);
+        background: linear-gradient(90deg, #2563eb, #1d4ed8);
         color: white;
         border: none;
         border-radius: 8px;
@@ -242,7 +242,7 @@ st.markdown("""
     
     .stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
     }
     
     /* Footer */
