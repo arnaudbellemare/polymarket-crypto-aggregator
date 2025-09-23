@@ -396,7 +396,29 @@ export class CPMI_Final {
   processCryptoTrades(trades) {
     const cryptoMarkets = new Map();
     
+    // Define crypto keywords for filtering
+    const cryptoKeywords = [
+      'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
+      'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 
+      'dogecoin', 'doge', 'litecoin', 'ltc', 'chainlink', 'link',
+      'avalanche', 'avax', 'polygon', 'matic', 'defi', 'nft',
+      'binance', 'coinbase', 'kraken', 'exchange', 'mining', 'staking'
+    ];
+    
     trades.forEach(trade => {
+      // Filter for crypto-related markets only
+      const title = trade.title?.toLowerCase() || '';
+      const slug = trade.slug?.toLowerCase() || '';
+      const eventSlug = trade.eventSlug?.toLowerCase() || '';
+      
+      const isCryptoMarket = cryptoKeywords.some(keyword => 
+        title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
+      );
+      
+      if (!isCryptoMarket) {
+        return; // Skip non-crypto markets
+      }
+      
       const marketKey = trade.conditionId;
       
       if (!cryptoMarkets.has(marketKey)) {
@@ -1364,17 +1386,7 @@ export class CPMI_Final {
     const slug = market.slug?.toLowerCase() || '';
     const eventSlug = market.eventSlug?.toLowerCase() || '';
     
-    // Check if it's actually a crypto-related market
-    const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 'dogecoin', 'doge'];
-    const isCryptoMarket = cryptoKeywords.some(keyword => 
-      title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
-    );
-    
-    if (!isCryptoMarket) {
-      return 'uncategorized';
-    }
-    
-    // Categorize crypto markets
+    // Categorize markets based on keywords
     for (const [category, keywords] of this.marketCategories) {
       if (keywords.some(keyword => 
         title.includes(keyword) || 
