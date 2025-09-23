@@ -46,13 +46,12 @@ app.get('/api/cpmi/current', (req, res) => {
 // Get CPMI history
 app.get('/api/cpmi/history', (req, res) => {
   try {
-    const history = cpmi.getHistoricalValues();
     const statistics = cpmi.getIndexStatistics();
     
     res.json({
       success: true,
       data: {
-        history,
+        history: statistics.historicalValues || [],
         statistics,
         timestamp: new Date().toISOString()
       }
