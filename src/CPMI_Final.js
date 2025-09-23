@@ -265,36 +265,28 @@ export class CPMI_Final {
    */
   async calculateIndex() {
     try {
-      console.log('📊 Fetching market data from Polymarket...');
+      console.log('📊 Fetching trade data from Polymarket...');
       
-      // Fetch both markets and trades for comprehensive data
-      const [marketsResponse, tradesResponse] = await Promise.all([
-        this.client.getCryptoMarkets(2000),  // All available crypto markets
-        this.client.getCryptoTrades(8000)    // Recent trading activity
-      ]);
-      
-      if (!marketsResponse.success) {
-        throw new Error(`Failed to fetch markets: ${marketsResponse.error}`);
-      }
+      // Fetch trades with higher limit to get more crypto markets
+      const tradesResponse = await this.client.getCryptoTrades(10000);  // Max limit
       if (!tradesResponse.success) {
         throw new Error(`Failed to fetch trades: ${tradesResponse.error}`);
       }
       
-      const markets = marketsResponse.data;
       const trades = tradesResponse.data;
-      console.log(`📈 Fetched ${markets.length} crypto markets and ${trades.length} recent trades`);
+      console.log(`📈 Fetched ${trades.length} recent trades`);
       
-      // Combine markets and trades data
+      // Filter for crypto-related trades
       const cryptoTrades = this.filterCryptoTrades(trades);
       console.log(`🔍 Found ${cryptoTrades.length} crypto-related trades`);
       
-      if (cryptoTrades.length === 0 && markets.length === 0) {
-        console.log('⚠️ No crypto data found');
+      if (cryptoTrades.length === 0) {
+        console.log('⚠️ No crypto trades found in recent data');
         return;
       }
       
-      // Process crypto markets (combine markets and trades)
-      const cryptoMarkets = this.processCryptoData(markets, cryptoTrades);
+      // Process crypto markets
+      const cryptoMarkets = this.processCryptoTrades(cryptoTrades);
       this.lastProcessedMarkets = cryptoMarkets; // Store for export
       console.log(`📊 Processed ${cryptoMarkets.length} crypto markets`);
       
@@ -452,102 +444,6 @@ export class CPMI_Final {
     cryptoMarkets.forEach(market => {
       if (market.totalVolume > 0) {
         market.avgPrice = market.totalValue / market.totalVolume;
-      }
-    });
-    
-    return Array.from(cryptoMarkets.values());
-  }
-
-  /**
-   * Process crypto data combining markets and trades
-   */
-  processCryptoData(markets, trades) {
-    const cryptoMarkets = new Map();
-    
-    // First, add all markets (even without recent trades)
-    markets.forEach(market => {
-      const marketKey = market.conditionId || market.id;
-      
-      if (!cryptoMarkets.has(marketKey)) {
-        cryptoMarkets.set(marketKey, {
-          conditionId: marketKey,
-          title: market.question || market.title,
-          slug: market.slug,
-          eventSlug: market.eventSlug,
-          icon: market.icon,
-          trades: [],
-          totalVolume: 0,
-          totalValue: 0,
-          buyVolume: 0,
-          sellVolume: 0,
-          buyTrades: 0,
-          sellTrades: 0,
-          avgPrice: 0,
-          lastTrade: null,
-          endDate: market.endDate,
-          volume: market.volume || 0,
-          tradeCount: market.tradeCount || 0,
-          lastTradeTime: market.lastTradeTime || 0
-        });
-      }
-    });
-    
-    // Then, add trade data to existing markets
-    trades.forEach(trade => {
-      const marketKey = trade.conditionId;
-      
-      if (!cryptoMarkets.has(marketKey)) {
-        cryptoMarkets.set(marketKey, {
-          conditionId: trade.conditionId,
-          title: trade.title,
-          slug: trade.slug,
-          eventSlug: trade.eventSlug,
-          icon: trade.icon,
-          trades: [],
-          totalVolume: 0,
-          totalValue: 0,
-          buyVolume: 0,
-          sellVolume: 0,
-          buyTrades: 0,
-          sellTrades: 0,
-          avgPrice: 0,
-          lastTrade: null,
-          endDate: null,
-          volume: 0,
-          tradeCount: 0,
-          lastTradeTime: 0
-        });
-      }
-      
-      const market = cryptoMarkets.get(marketKey);
-      market.trades.push(trade);
-      market.totalVolume += trade.size;
-      market.totalValue += trade.size * trade.price;
-      
-      if (trade.side === 'BUY') {
-        market.buyVolume += trade.size;
-        market.buyTrades++;
-      } else {
-        market.sellVolume += trade.size;
-        market.sellTrades++;
-      }
-      
-      if (!market.lastTrade || trade.timestamp > market.lastTrade.timestamp) {
-        market.lastTrade = trade;
-        market.lastTradeTime = trade.timestamp * 1000; // Convert to milliseconds
-      }
-    });
-    
-    // Calculate averages and update volume data
-    cryptoMarkets.forEach(market => {
-      if (market.totalVolume > 0) {
-        market.avgPrice = market.totalValue / market.totalVolume;
-      }
-      
-      // Update volume and trade count from trades if available
-      if (market.trades.length > 0) {
-        market.volume = market.totalVolume;
-        market.tradeCount = market.trades.length;
       }
     });
     
