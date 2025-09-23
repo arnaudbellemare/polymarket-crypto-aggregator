@@ -270,49 +270,30 @@ export class CPMI_Final {
    */
   async calculateIndex() {
     try {
-      console.log('📊 Fetching crypto markets from Polymarket Gamma API...');
+      console.log('📊 Fetching real-time trade data from Polymarket...');
       
-      // Fetch crypto markets using the new Gamma API
-      const marketsResponse = await this.client.getCryptoOnlyMarkets(1000);
-      let cryptoMarkets;
-      
-      if (!marketsResponse.success) {
-        console.log('⚠️ Markets API failed, falling back to trades API...');
-        // Fallback to trades API
-        const tradesResponse = await this.client.getCryptoTrades(10000);
-        if (!tradesResponse.success) {
-          throw new Error(`Failed to fetch data: ${tradesResponse.error}`);
-        }
-        
-        const trades = tradesResponse.data;
-        console.log(`📈 Fetched ${trades.length} recent trades (fallback)`);
-        
-        const cryptoTrades = this.filterCryptoTrades(trades);
-        console.log(`🔍 Found ${cryptoTrades.length} crypto-related trades`);
-        
-        if (cryptoTrades.length === 0) {
-          console.log('⚠️ No crypto trades found in recent data');
-          return;
-        }
-        
-        cryptoMarkets = this.processCryptoTrades(cryptoTrades);
-        this.lastProcessedMarkets = cryptoMarkets;
-        console.log(`📊 Processed ${cryptoMarkets.length} crypto markets from trades`);
-      } else {
-        // Use markets API data
-        const markets = marketsResponse.data;
-        console.log(`📈 Fetched ${markets.length} crypto markets from Gamma API`);
-        
-        if (markets.length === 0) {
-          console.log('⚠️ No crypto markets found');
-          return;
-        }
-        
-        // Process markets data
-        cryptoMarkets = this.processMarketsData(markets);
-        this.lastProcessedMarkets = cryptoMarkets; // Store for export
-        console.log(`📊 Processed ${cryptoMarkets.length} crypto markets from markets API`);
+      // Use trades API as primary source (real current data)
+      const tradesResponse = await this.client.getCryptoTrades(10000);
+      if (!tradesResponse.success) {
+        throw new Error(`Failed to fetch trades: ${tradesResponse.error}`);
       }
+      
+      const trades = tradesResponse.data;
+      console.log(`📈 Fetched ${trades.length} recent trades`);
+      
+      // Filter for crypto-related trades
+      const cryptoTrades = this.filterCryptoTrades(trades);
+      console.log(`🔍 Found ${cryptoTrades.length} crypto-related trades`);
+      
+      if (cryptoTrades.length === 0) {
+        console.log('⚠️ No crypto trades found in recent data');
+        return;
+      }
+      
+      // Process crypto markets from trades
+      const cryptoMarkets = this.processCryptoTrades(cryptoTrades);
+      this.lastProcessedMarkets = cryptoMarkets; // Store for export
+      console.log(`📊 Processed ${cryptoMarkets.length} crypto markets from real trade data`);
       
       // Calculate category indices using improved methodology
       const categoryIndices = {};

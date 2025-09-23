@@ -521,7 +521,12 @@ export class SimplePolymarketClient {
              market.slug.toLowerCase().includes('btc') ||
              market.slug.toLowerCase().includes('eth'));
           
-          return isCryptoCategory || isCryptoQuestion || isCryptoSlug;
+          const isCrypto = isCryptoCategory || isCryptoQuestion || isCryptoSlug;
+          
+          // Additional filter: exclude closed/resolved markets
+          const isCurrentlyActive = market.active && !market.closed;
+          
+          return isCrypto && isCurrentlyActive;
         });
       }
       
