@@ -20,9 +20,21 @@ import axios from 'axios';
 interface CPMIData {
   success: boolean;
   data: {
-    index: number;
+    index: {
+      value: number;
+      interpretation: string;
+      lastUpdate: string;
+      categoryIndices: {
+        [key: string]: number;
+      };
+    };
     categories: {
-      [key: string]: number;
+      [key: string]: {
+        index: number;
+        weight: number;
+        interpretation: string;
+        deviation: number;
+      };
     };
     timestamp: string;
   };
@@ -125,7 +137,7 @@ export default function Home() {
 
   const categoryData = cpmiData ? Object.entries(cpmiData.data.categories).map(([key, value], index) => ({
     name: formatCategoryName(key),
-    value: value,
+    value: value.index,
     color: COLORS[index % COLORS.length]
   })) : [];
 
@@ -163,29 +175,29 @@ export default function Home() {
           <div className="flex items-center justify-center mb-4">
             {cpmiData && (
               <>
-                {cpmiData.data.index > 100 ? (
+                {cpmiData.data.index.value > 100 ? (
                   <TrendingUp className="h-8 w-8 text-green-500 mr-2" />
-                ) : cpmiData.data.index < 100 ? (
+                ) : cpmiData.data.index.value < 100 ? (
                   <TrendingDown className="h-8 w-8 text-red-500 mr-2" />
                 ) : (
                   <Activity className="h-8 w-8 text-gray-500 mr-2" />
                 )}
                 <h2 className="text-3xl font-bold text-white">
-                  {cpmiData.data.index.toFixed(2)}
+                  {cpmiData.data.index.value.toFixed(2)}
                 </h2>
               </>
             )}
           </div>
-          <div className={`text-2xl font-semibold ${getSentimentColor(cpmiData?.data.index || 100)}`}>
-            {cpmiData ? getSentimentText(cpmiData.data.index) : 'Loading...'}
+          <div className={`text-2xl font-semibold ${getSentimentColor(cpmiData?.data.index.value || 100)}`}>
+            {cpmiData ? getSentimentText(cpmiData.data.index.value) : 'Loading...'}
           </div>
           <div className="text-white/60 mt-2">
             {cpmiData && (
               <span>
-                {cpmiData.data.index > 100 
-                  ? `+${(cpmiData.data.index - 100).toFixed(2)} above neutral`
-                  : cpmiData.data.index < 100 
-                  ? `${(cpmiData.data.index - 100).toFixed(2)} below neutral`
+                {cpmiData.data.index.value > 100 
+                  ? `+${(cpmiData.data.index.value - 100).toFixed(2)} above neutral`
+                  : cpmiData.data.index.value < 100 
+                  ? `${(cpmiData.data.index.value - 100).toFixed(2)} below neutral`
                   : 'Perfectly neutral'
                 }
               </span>
