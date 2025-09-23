@@ -1443,7 +1443,10 @@ export class CPMI_Final {
         tradeCount: market.tradeCount || 0,
         lastTradeTime: market.lastTradeTime,
         slug: market.slug,
-        eventSlug: market.eventSlug
+        eventSlug: market.eventSlug,
+        trades: market.trades || [],
+        totalVolume: market.totalVolume,
+        totalValue: market.totalValue
       };
     });
   }
