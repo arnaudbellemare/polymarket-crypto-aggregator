@@ -537,17 +537,66 @@ export class CPMI_Final {
    * Calculate market price from outcome prices
    */
   calculateMarketPrice(market) {
-    if (!market.outcomePrices || !Array.isArray(market.outcomePrices)) {
-      return 0.5; // Default to 50% if no price data
+    // Try multiple price sources in order of preference
+    
+    // 1. Use lastTradePrice if available and meaningful
+    if (market.lastTradePrice && market.lastTradePrice > 0) {
+      return market.lastTradePrice;
     }
     
-    // For binary markets, use the first outcome price
-    if (market.outcomePrices.length >= 1) {
-      const price = parseFloat(market.outcomePrices[0]);
-      return isNaN(price) ? 0.5 : price;
+    // 2. Use bestBid and bestAsk to calculate mid-price
+    if (market.bestBid !== undefined && market.bestAsk !== undefined && 
+        market.bestBid > 0 && market.bestAsk > 0) {
+      const midPrice = (market.bestBid + market.bestAsk) / 2;
+      return midPrice;
     }
     
-    return 0.5; // Default fallback
+    // 3. Use bestBid if available
+    if (market.bestBid !== undefined && market.bestBid > 0) {
+      return market.bestBid;
+    }
+    
+    // 4. Use bestAsk if available
+    if (market.bestAsk !== undefined && market.bestAsk > 0) {
+      return market.bestAsk;
+    }
+    
+    // 5. Try to parse outcome prices (primary method for markets API)
+    if (market.outcomePrices) {
+      let outcomePrices;
+      
+      // Handle both array and JSON string formats
+      if (Array.isArray(market.outcomePrices)) {
+        outcomePrices = market.outcomePrices;
+      } else if (typeof market.outcomePrices === 'string') {
+        try {
+          outcomePrices = JSON.parse(market.outcomePrices);
+        } catch (e) {
+          // If JSON parsing fails, treat as single value
+          const price = parseFloat(market.outcomePrices);
+          if (!isNaN(price) && price > 0) {
+            return price;
+          }
+        }
+      }
+      
+      // Find the highest meaningful price from outcome prices (for binary markets)
+      if (outcomePrices && Array.isArray(outcomePrices)) {
+        let maxPrice = 0;
+        for (const priceStr of outcomePrices) {
+          const price = parseFloat(priceStr);
+          if (!isNaN(price) && price > 0 && price < 1) { // Valid probability range
+            maxPrice = Math.max(maxPrice, price);
+          }
+        }
+        if (maxPrice > 0) {
+          return maxPrice;
+        }
+      }
+    }
+    
+    // 6. Default to 50% if no meaningful price data
+    return 0.5;
   }
 
   /**
