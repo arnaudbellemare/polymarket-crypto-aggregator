@@ -17,18 +17,18 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
-    /* Main theme colors - Balanced for readability */
+    /* Main theme colors - White text on dark background */
     :root {
         --primary-color: #1f2937;
-        --secondary-color: #2563eb;
-        --success-color: #059669;
-        --danger-color: #dc2626;
-        --warning-color: #d97706;
-        --background-color: #ffffff;
-        --card-background: #f8fafc;
-        --text-primary: #1f2937;
-        --text-secondary: #4b5563;
-        --border-color: #e5e7eb;
+        --secondary-color: #60a5fa;
+        --success-color: #34d399;
+        --danger-color: #f87171;
+        --warning-color: #fbbf24;
+        --background-color: #1f2937;
+        --card-background: #374151;
+        --text-primary: #ffffff;
+        --text-secondary: #d1d5db;
+        --border-color: #4b5563;
     }
     
     /* Main container */
@@ -98,19 +98,19 @@ st.markdown("""
         font-size: 0.9rem;
     }
     
-    /* Sentiment colors - More readable */
+    /* Sentiment colors - Bright for dark theme */
     .bullish {
-        color: #059669 !important;
+        color: #34d399 !important;
         font-weight: 700;
     }
     
     .bearish {
-        color: #dc2626 !important;
+        color: #f87171 !important;
         font-weight: 700;
     }
     
     .neutral {
-        color: #d97706 !important;
+        color: #fbbf24 !important;
         font-weight: 700;
     }
     
@@ -121,7 +121,7 @@ st.markdown("""
         font-weight: 600;
         margin: 2rem 0 1rem 0;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #2563eb;
+        border-bottom: 2px solid #60a5fa;
     }
     
     /* Data tables */
@@ -231,7 +231,7 @@ st.markdown("""
     
     /* Button styling */
     .stButton > button {
-        background: linear-gradient(90deg, #2563eb, #1d4ed8);
+        background: linear-gradient(90deg, #60a5fa, #3b82f6);
         color: white;
         border: none;
         border-radius: 8px;
@@ -242,7 +242,7 @@ st.markdown("""
     
     .stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+        box-shadow: 0 4px 8px rgba(96, 165, 250, 0.3);
     }
     
     /* Footer */
