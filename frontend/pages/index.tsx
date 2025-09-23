@@ -66,7 +66,8 @@ export default function Home() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const API_BASE_URL = process.env.NEXT_PUBLIC_CPMI_API_URL || 'http://localhost:3000';
+      const API_BASE_URL = process.env.NEXT_PUBLIC_CPMI_API_URL || 'http://localhost:3001';
+      console.log('Fetching from API:', API_BASE_URL);
       const [currentResponse, historyResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/cpmi/current`),
         axios.get(`${API_BASE_URL}/api/cpmi/history`)
@@ -76,7 +77,7 @@ export default function Home() {
       setHistoryData(historyResponse.data);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch CPMI data. Make sure your VM is running.');
+      setError('Failed to fetch CPMI data. API URL: ' + API_BASE_URL);
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);

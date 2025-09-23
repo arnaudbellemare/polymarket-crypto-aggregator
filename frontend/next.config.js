@@ -3,13 +3,13 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   env: {
-    CPMI_API_URL: process.env.CPMI_API_URL || 'http://YOUR_VM_IP:3000',
+    NEXT_PUBLIC_CPMI_API_URL: process.env.NEXT_PUBLIC_CPMI_API_URL || 'http://localhost:3001',
   },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.CPMI_API_URL || 'http://YOUR_VM_IP:3000'}/api/:path*`,
+        destination: `${process.env.NEXT_PUBLIC_CPMI_API_URL || 'http://localhost:3001'}/api/:path*`,
       },
     ];
   },
