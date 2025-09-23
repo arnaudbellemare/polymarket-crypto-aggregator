@@ -672,13 +672,13 @@ def main():
             if history and len(history) > 1:
                 hist_df = pd.DataFrame(history)
                 hist_df['timestamp'] = pd.to_datetime(hist_df['timestamp'])
-                hist_df['sentiment'] = hist_df['index'].apply(get_sentiment_color)
+                hist_df['sentiment'] = hist_df['value'].apply(get_sentiment_color)
                 
                 # Line chart
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
                     x=hist_df['timestamp'],
-                    y=hist_df['index'],
+                    y=hist_df['value'],
                     mode='lines+markers',
                     name='CPMI',
                     line=dict(color='#667eea', width=3),
