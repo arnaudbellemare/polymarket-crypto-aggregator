@@ -1157,6 +1157,23 @@ export class CPMI_Final {
   extractTargetFromMarket(market) {
     const title = market.title.toLowerCase();
     
+    // Look for range markets (between X and Y)
+    const rangeMatch = title.match(/(\w+)\s+.*?between\s+\$?(\d+(?:,\d+)*(?:\.\d+)?)\s+and\s+\$?(\d+(?:,\d+)*(?:\.\d+)?)/);
+    if (rangeMatch) {
+      const symbol = rangeMatch[1].toUpperCase();
+      const minPrice = parseFloat(rangeMatch[2].replace(/,/g, ''));
+      const maxPrice = parseFloat(rangeMatch[3].replace(/,/g, ''));
+      const currentPrice = this.getCurrentCryptoPrice(symbol);
+      
+      return {
+        type: 'range',
+        crypto: symbol,
+        minPrice,
+        maxPrice,
+        currentPrice
+      };
+    }
+    
     // Look for "dip to" or "drop to" markets (bearish price targets)
     const dipMatch = title.match(/(\w+)\s+(?:dip\s+to|drop\s+to|fall\s+to|crash\s+to)\s+\$?(\d+(?:\.\d+)?)/);
     if (dipMatch) {
