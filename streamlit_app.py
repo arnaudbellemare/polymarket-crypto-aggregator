@@ -17,39 +17,205 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
+    /* Main theme colors */
+    :root {
+        --primary-color: #1f2937;
+        --secondary-color: #3b82f6;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --background-color: #f8fafc;
+        --card-background: #ffffff;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+    }
+    
+    /* Main container */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+    
+    /* Header styling */
     .main-header {
         text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border-radius: 10px;
+        border-radius: 15px;
         margin-bottom: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
+    
+    .main-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .main-header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    /* Metric cards */
     .metric-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-left: 4px solid #667eea;
+        background: var(--card-background);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-left: 4px solid var(--secondary-color);
+        margin-bottom: 1rem;
+        transition: transform 0.2s ease;
     }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    
+    .metric-card h3 {
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-card p {
+        color: var(--text-primary);
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    /* Sentiment colors */
     .bullish {
-        color: #00C851;
+        color: var(--success-color) !important;
+        font-weight: 700;
     }
+    
     .bearish {
-        color: #ff4444;
+        color: var(--danger-color) !important;
+        font-weight: 700;
     }
+    
     .neutral {
-        color: #ffbb33;
+        color: var(--warning-color) !important;
+        font-weight: 700;
+    }
+    
+    /* Section headers */
+    .section-header {
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--secondary-color);
+    }
+    
+    /* Data tables */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: var(--background-color);
+    }
+    
+    /* Text color fixes */
+    .stMarkdown {
+        color: var(--text-primary);
+    }
+    
+    .stText {
+        color: var(--text-primary);
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(90deg, var(--secondary-color), #1d4ed8);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Footer */
+    .footer {
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 2rem 0;
+        margin-top: 3rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-online {
+        background-color: var(--success-color);
+        box-shadow: 0 0 6px var(--success-color);
+    }
+    
+    .status-offline {
+        background-color: var(--danger-color);
+        box-shadow: 0 0 6px var(--danger-color);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # API Configuration
+st.sidebar.markdown("### 🔗 API Configuration")
 API_BASE_URL = st.sidebar.text_input(
     "API URL", 
-    value="http://your-vm-ip:3001",
+    value="http://35.203.43.14:3000",
     help="Enter your VM IP address where the API is running"
 )
+
+# Connection status
+@st.cache_data(ttl=10)
+def check_api_status():
+    try:
+        response = requests.get(f"{API_BASE_URL}/health", timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
+api_status = check_api_status()
+if api_status:
+    st.sidebar.markdown("""
+    <div style="display: flex; align-items: center; margin: 1rem 0;">
+        <span class="status-indicator status-online"></span>
+        <span style="color: var(--success-color); font-weight: 600;">API Connected</span>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.sidebar.markdown("""
+    <div style="display: flex; align-items: center; margin: 1rem 0;">
+        <span class="status-indicator status-offline"></span>
+        <span style="color: var(--danger-color); font-weight: 600;">API Disconnected</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 @st.cache_data(ttl=30)  # Cache for 30 seconds
 def fetch_cpmi_data():
@@ -130,17 +296,19 @@ def main():
             sentiment_class = get_sentiment_color(current_index)
             st.markdown(f"""
             <div class="metric-card">
-                <h3>Sentiment</h3>
+                <h3>Market Sentiment</h3>
                 <p class="{sentiment_class}">
                     {get_sentiment_emoji(current_index)} {interpretation}
                 </p>
+                <small style="color: var(--text-secondary);">Based on prediction market data</small>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
             st.metric(
                 label="Last Update",
-                value=datetime.fromisoformat(last_update.replace('Z', '+00:00')).strftime('%H:%M:%S')
+                value=datetime.fromisoformat(last_update.replace('Z', '+00:00')).strftime('%H:%M:%S'),
+                help="Data refreshes every 5 minutes"
             )
         
         with col4:
@@ -149,7 +317,7 @@ def main():
                 st.rerun()
 
         # Category breakdown
-        st.subheader("📊 Category Breakdown")
+        st.markdown('<h2 class="section-header">📊 Category Breakdown</h2>', unsafe_allow_html=True)
         
         categories = data['categories']
         category_df = pd.DataFrame([
@@ -186,7 +354,7 @@ def main():
 
         # Historical data
         if history_data and history_data.get('success'):
-            st.subheader("📈 Historical Trend")
+            st.markdown('<h2 class="section-header">📈 Historical Trend</h2>', unsafe_allow_html=True)
             
             history = history_data['data']['history']
             if history:
@@ -244,10 +412,11 @@ def main():
         st.info("💡 **API should be running on your VM with:** `PORT=3001 node src/api-server.js`")
 
     # Footer
-    st.markdown("---")
     st.markdown("""
-    <div style='text-align: center; color: #666;'>
-        <p>CPMI - Crypto Prediction Market Index | Real-time Polymarket Data</p>
+    <div class="footer">
+        <p><strong>CPMI - Crypto Prediction Market Index</strong></p>
+        <p>Real-time sentiment analysis from Polymarket crypto prediction markets</p>
+        <p>Built with advanced machine learning and market data aggregation</p>
     </div>
     """, unsafe_allow_html=True)
 
