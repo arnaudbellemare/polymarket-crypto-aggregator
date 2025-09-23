@@ -717,6 +717,22 @@ export class CPMI_Final {
    * Extract probability for directional markets
    */
   extractDirectionalProbability(market) {
+    // For directional markets, we need to analyze the direction keywords
+    const targetInfo = this.extractTargetFromMarket(market);
+    
+    if (targetInfo && targetInfo.type === 'direction') {
+      // For directional markets, the market price represents confidence in the direction
+      if (targetInfo.direction === 'up' || targetInfo.direction === 'bullish') {
+        // Bullish direction: market price = confidence in going up
+        return market.avgPrice * 100;
+      } else if (targetInfo.direction === 'down' || targetInfo.direction === 'bearish') {
+        // Bearish direction: market price = confidence in going down
+        // Convert to bullish probability: 100 - bearish_probability
+        return 100 - (market.avgPrice * 100);
+      }
+    }
+    
+    // Fallback to raw market price if we can't determine direction
     return market.avgPrice * 100;
   }
 
@@ -725,7 +741,34 @@ export class CPMI_Final {
    */
   extractPricePredictionProbability(market) {
     // For price prediction markets, we need to analyze the target vs current price
-    // For now, use the market price as it reflects market expectations
+    const targetInfo = this.extractTargetFromMarket(market);
+    
+    if (targetInfo && targetInfo.type === 'price_target') {
+      const currentPrice = this.getCurrentCryptoPrice(targetInfo.crypto);
+      
+      if (currentPrice && targetInfo.targetPrice) {
+        // Calculate the required price movement
+        const priceChange = targetInfo.targetPrice - currentPrice;
+        const percentChange = (priceChange / currentPrice) * 100;
+        
+        // Determine if this is a bullish or bearish prediction
+        if (priceChange > 0) {
+          // Bullish prediction: market expects price to go UP
+          // Market probability = confidence in price increase
+          console.log(`📈 BULLISH: ${targetInfo.crypto} ${currentPrice} → ${targetInfo.targetPrice} (+${percentChange.toFixed(1)}%) - Market: ${(market.avgPrice * 100).toFixed(1)}%`);
+          return market.avgPrice * 100;
+        } else {
+          // Bearish prediction: market expects price to go DOWN
+          // Market probability = confidence in price decrease
+          // Convert to bullish probability: 100 - bearish_probability
+          const bullishProb = 100 - (market.avgPrice * 100);
+          console.log(`📉 BEARISH: ${targetInfo.crypto} ${currentPrice} → ${targetInfo.targetPrice} (${percentChange.toFixed(1)}%) - Market: ${(market.avgPrice * 100).toFixed(1)}% → Bullish: ${bullishProb.toFixed(1)}%`);
+          return bullishProb;
+        }
+      }
+    }
+    
+    // Fallback to raw market price if we can't determine direction
     return market.avgPrice * 100;
   }
 
@@ -734,7 +777,27 @@ export class CPMI_Final {
    */
   extractRangeProbability(market) {
     // For range markets, we need to analyze if current price is in range
-    // For now, use the market price as it reflects market expectations
+    const targetInfo = this.extractTargetFromMarket(market);
+    
+    if (targetInfo && targetInfo.type === 'range') {
+      const currentPrice = this.getCurrentCryptoPrice(targetInfo.crypto);
+      
+      if (currentPrice && targetInfo.minPrice && targetInfo.maxPrice) {
+        // Check if current price is within the range
+        const isInRange = currentPrice >= targetInfo.minPrice && currentPrice <= targetInfo.maxPrice;
+        
+        if (isInRange) {
+          // Current price is in range: market price = confidence it stays in range
+          return market.avgPrice * 100;
+        } else {
+          // Current price is outside range: market price = confidence it moves into range
+          // This is more complex - for now, use market price as bullish indicator
+          return market.avgPrice * 100;
+        }
+      }
+    }
+    
+    // Fallback to raw market price if we can't determine range
     return market.avgPrice * 100;
   }
 
