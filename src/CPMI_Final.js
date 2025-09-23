@@ -701,7 +701,8 @@ export class CPMI_Final {
     if ((lowerTitle.includes('reach') || lowerTitle.includes('hit') || 
          lowerTitle.includes('above') || lowerTitle.includes('below') ||
          lowerTitle.includes('dip to') || lowerTitle.includes('go to') ||
-         lowerTitle.includes('touch')) && 
+         lowerTitle.includes('touch') || lowerTitle.includes('drop to') ||
+         lowerTitle.includes('fall to') || lowerTitle.includes('crash to')) && 
         (lowerTitle.includes('$') || lowerTitle.includes('price'))) {
       return 'price_target';
     }
@@ -767,18 +768,18 @@ export class CPMI_Final {
         const percentChange = (priceChange / currentPrice) * 100;
         
         // Determine if this is a bullish or bearish prediction
-        if (priceChange > 0) {
-          // Bullish prediction: market expects price to go UP
-          // Market probability = confidence in price increase
-          console.log(`📈 BULLISH: ${targetInfo.crypto} ${currentPrice} → ${targetInfo.targetPrice} (+${percentChange.toFixed(1)}%) - Market: ${(market.avgPrice * 100).toFixed(1)}%`);
-          return market.avgPrice * 100;
-        } else {
+        if (targetInfo.direction === 'down' || priceChange < 0) {
           // Bearish prediction: market expects price to go DOWN
           // Market probability = confidence in price decrease
           // Convert to bullish probability: 100 - bearish_probability
           const bullishProb = 100 - (market.avgPrice * 100);
           console.log(`📉 BEARISH: ${targetInfo.crypto} ${currentPrice} → ${targetInfo.targetPrice} (${percentChange.toFixed(1)}%) - Market: ${(market.avgPrice * 100).toFixed(1)}% → Bullish: ${bullishProb.toFixed(1)}%`);
           return bullishProb;
+        } else {
+          // Bullish prediction: market expects price to go UP
+          // Market probability = confidence in price increase
+          console.log(`📈 BULLISH: ${targetInfo.crypto} ${currentPrice} → ${targetInfo.targetPrice} (+${percentChange.toFixed(1)}%) - Market: ${(market.avgPrice * 100).toFixed(1)}%`);
+          return market.avgPrice * 100;
         }
       }
     }
@@ -1156,20 +1157,51 @@ export class CPMI_Final {
   extractTargetFromMarket(market) {
     const title = market.title.toLowerCase();
     
-    // Look for price targets
-    const priceMatch = title.match(/(\w+)\s+(?:reach|hit|be\s+at|be\s+above|be\s+below)\s+\$?(\d+(?:\.\d+)?)/);
-    if (priceMatch) {
-      const symbol = priceMatch[1].toUpperCase();
-      const targetPrice = parseFloat(priceMatch[2]);
-      
-      // Get current price for comparison
+    // Look for "dip to" or "drop to" markets (bearish price targets)
+    const dipMatch = title.match(/(\w+)\s+(?:dip\s+to|drop\s+to|fall\s+to|crash\s+to)\s+\$?(\d+(?:\.\d+)?)/);
+    if (dipMatch) {
+      const symbol = dipMatch[1].toUpperCase();
+      const targetPrice = parseFloat(dipMatch[2]);
       const currentPrice = this.getCurrentCryptoPrice(symbol);
       
       return {
         type: 'price_target',
-        symbol,
+        crypto: symbol,
         targetPrice,
-        currentPrice
+        currentPrice,
+        direction: 'down' // This is a bearish prediction
+      };
+    }
+    
+    // Look for "reach" or "hit" markets (bullish price targets)
+    const reachMatch = title.match(/(\w+)\s+(?:reach|hit|be\s+at|be\s+above)\s+\$?(\d+(?:\.\d+)?)/);
+    if (reachMatch) {
+      const symbol = reachMatch[1].toUpperCase();
+      const targetPrice = parseFloat(reachMatch[2]);
+      const currentPrice = this.getCurrentCryptoPrice(symbol);
+      
+      return {
+        type: 'price_target',
+        crypto: symbol,
+        targetPrice,
+        currentPrice,
+        direction: 'up' // This is a bullish prediction
+      };
+    }
+    
+    // Look for "below" markets (bearish price targets)
+    const belowMatch = title.match(/(\w+)\s+(?:be\s+below|below)\s+\$?(\d+(?:\.\d+)?)/);
+    if (belowMatch) {
+      const symbol = belowMatch[1].toUpperCase();
+      const targetPrice = parseFloat(belowMatch[2]);
+      const currentPrice = this.getCurrentCryptoPrice(symbol);
+      
+      return {
+        type: 'price_target',
+        crypto: symbol,
+        targetPrice,
+        currentPrice,
+        direction: 'down' // This is a bearish prediction
       };
     }
     
@@ -1178,11 +1210,13 @@ export class CPMI_Final {
     if (directionMatch) {
       const symbol = directionMatch[1].toUpperCase();
       const currentPrice = this.getCurrentCryptoPrice(symbol);
+      const direction = title.includes('up') || title.includes('rise') || title.includes('increase') ? 'up' : 'down';
       
       return {
         type: 'direction',
-        symbol,
-        currentPrice
+        crypto: symbol,
+        currentPrice,
+        direction
       };
     }
     
