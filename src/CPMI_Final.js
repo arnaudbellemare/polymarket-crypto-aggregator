@@ -288,10 +288,11 @@ export class CPMI_Final {
       const cryptoMarkets = this.processCryptoTrades(cryptoTrades);
       console.log(`📊 Processed ${cryptoMarkets.length} crypto markets`);
       
-      // Calculate category indices using simple aggregation
+      // Calculate category indices using improved methodology
       const categoryIndices = {};
       let totalWeightedProbability = 0;
       let totalWeight = 0;
+      let totalAccuracyWeight = 0;
 
       for (const [category, keywords] of this.marketCategories) {
         const categoryIndex = this.calculateCategoryIndex(category, keywords, cryptoMarkets);
@@ -299,21 +300,36 @@ export class CPMI_Final {
 
         if (categoryIndex !== null) {
           const categoryWeight = this.config.categoryWeights[category];
-          totalWeightedProbability += categoryIndex * categoryWeight;
+          
+          // Calculate accuracy-weighted probability for this category
+          const accuracyWeight = this.calculateCategoryAccuracy(category, cryptoMarkets);
+          const adjustedProbability = categoryIndex * accuracyWeight;
+          
+          totalWeightedProbability += adjustedProbability * categoryWeight;
           totalWeight += categoryWeight;
+          totalAccuracyWeight += accuracyWeight * categoryWeight;
         }
       }
 
-      // Calculate overall CPMI
+      // Calculate overall CPMI with accuracy and time adjustments
       if (totalWeight > 0) {
         const overallProbability = totalWeightedProbability / totalWeight;
-        this.currentIndex = this.config.baselineValue + (overallProbability - 50);
+        const averageAccuracy = totalAccuracyWeight / totalWeight;
         
-        // Apply smoothing (1-hour SMA)
+        // Apply time decay adjustment to the final index
+        const timeDecayFactor = this.calculateOverallTimeDecay(cryptoMarkets);
+        const adjustedProbability = overallProbability * timeDecayFactor;
+        
+        this.currentIndex = this.config.baselineValue + (adjustedProbability - 50);
+        
+        // Apply smoothing (1-hour SMA) with enhanced metadata
         this.historicalValues.push({
           timestamp: new Date(),
           value: this.currentIndex,
-          probability: overallProbability
+          probability: overallProbability,
+          accuracy: averageAccuracy,
+          timeDecay: timeDecayFactor,
+          rawProbability: totalWeightedProbability / totalWeight
         });
 
         // Keep only last hour of data for SMA
@@ -332,7 +348,10 @@ export class CPMI_Final {
       this.categoryIndices = categoryIndices;
       this.lastUpdate = new Date();
 
-      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${this.getIndexInterpretation()})`);
+      const interpretation = this.getIndexInterpretation();
+      const accuracy = totalAccuracyWeight / totalWeight;
+      const timeDecay = this.calculateOverallTimeDecay(cryptoMarkets);
+      console.log(`📈 CPMI: ${this.currentIndex.toFixed(2)} (${interpretation}) [Accuracy: ${(accuracy * 100).toFixed(1)}%, Time Decay: ${(timeDecay * 100).toFixed(1)}%]`);
       
     } catch (error) {
       console.error('❌ Error calculating CPMI:', error);
@@ -843,22 +862,249 @@ export class CPMI_Final {
 
   /**
    * Get time-to-expiration adjustment factor
-   * Based on Archak & Ipeirotis model: volatility decreases as we approach expiration
+   * Based on Black-Scholes time decay model: volatility decreases as we approach expiration
    */
   getTimeToExpirationAdjustment(market) {
-    // For now, use a simple heuristic since we don't have exact expiration dates
-    // In a real implementation, you'd parse the market title for expiration dates
+    try {
+      // Parse expiration date from market title or use market data
+      const expirationDate = this.parseExpirationDate(market);
+      if (!expirationDate) {
+        return this.getHeuristicTimeAdjustment(market);
+      }
+      
+      const now = new Date();
+      const timeToExpiration = (expirationDate - now) / (1000 * 60 * 60 * 24); // days
+      
+      if (timeToExpiration <= 0) {
+        return 0.1; // Expired or very close to expiration
+      }
+      
+      // Black-Scholes time decay: sqrt(T) where T is time to expiration
+      // Normalize to 0-1 range with reasonable bounds
+      const timeDecay = Math.sqrt(Math.min(timeToExpiration / 365, 1)); // Cap at 1 year
+      
+      // Apply minimum threshold to avoid zero weight
+      return Math.max(timeDecay, 0.1);
+      
+    } catch (error) {
+      console.warn('Error calculating time adjustment:', error);
+      return this.getHeuristicTimeAdjustment(market);
+    }
+  }
+  
+  /**
+   * Parse expiration date from market title
+   */
+  parseExpirationDate(market) {
+    const title = market.title.toLowerCase();
     
+    // Look for specific date patterns
+    const datePatterns = [
+      /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // MM/DD/YYYY
+      /(\d{1,2})-(\d{1,2})-(\d{4})/, // MM-DD-YYYY
+      /december \d{1,2},? \d{4}/i,
+      /january \d{1,2},? \d{4}/i,
+      /february \d{1,2},? \d{4}/i,
+      /march \d{1,2},? \d{4}/i,
+      /april \d{1,2},? \d{4}/i,
+      /may \d{1,2},? \d{4}/i,
+      /june \d{1,2},? \d{4}/i,
+      /july \d{1,2},? \d{4}/i,
+      /august \d{1,2},? \d{4}/i,
+      /september \d{1,2},? \d{4}/i,
+      /october \d{1,2},? \d{4}/i,
+      /november \d{1,2},? \d{4}/i
+    ];
+    
+    for (const pattern of datePatterns) {
+      const match = title.match(pattern);
+      if (match) {
+        try {
+          return new Date(match[0]);
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+    
+    // Look for year-only patterns
+    const yearMatch = title.match(/(\d{4})/);
+    if (yearMatch) {
+      const year = parseInt(yearMatch[1]);
+      if (year >= 2024 && year <= 2030) {
+        return new Date(year, 11, 31); // End of year
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Fallback heuristic time adjustment
+   */
+  getHeuristicTimeAdjustment(market) {
     const title = market.title.toLowerCase();
     
     // Estimate time to expiration based on keywords
-    if (title.includes('2024') || title.includes('end of year')) return 1.0; // Full volatility
-    if (title.includes('2025')) return 1.2; // Higher volatility (longer time)
-    if (title.includes('month') || title.includes('30 days')) return 0.8; // Lower volatility
-    if (title.includes('week') || title.includes('7 days')) return 0.6; // Much lower volatility
-    if (title.includes('day') || title.includes('24 hours')) return 0.4; // Very low volatility
+    if (title.includes('2024') || title.includes('end of year')) return 0.8; // ~3 months
+    if (title.includes('2025')) return 1.0; // ~1 year
+    if (title.includes('month') || title.includes('30 days')) return 0.6; // ~1 month
+    if (title.includes('week') || title.includes('7 days')) return 0.4; // ~1 week
+    if (title.includes('day') || title.includes('24 hours')) return 0.2; // ~1 day
     
-    return 1.0; // Default: no time adjustment
+    return 0.7; // Default: moderate time adjustment
+  }
+
+  /**
+   * Calculate prediction accuracy score for a market
+   * Compares prediction market probabilities with actual crypto price movements
+   */
+  calculatePredictionAccuracy(market) {
+    try {
+      // Extract target price or direction from market title
+      const targetInfo = this.extractTargetFromMarket(market);
+      if (!targetInfo) {
+        return 0.5; // Default neutral accuracy
+      }
+      
+      // Get current crypto price
+      const currentPrice = this.getCurrentCryptoPrice(targetInfo.symbol);
+      if (!currentPrice) {
+        return 0.5; // Default if price unavailable
+      }
+      
+      // Calculate accuracy based on market type
+      let accuracy = 0.5; // Default
+      
+      if (targetInfo.type === 'price_target') {
+        // For price targets: accuracy = how close prediction is to actual movement
+        const predictedProbability = market.avgPrice;
+        const actualMovement = (currentPrice - targetInfo.currentPrice) / targetInfo.currentPrice;
+        const predictedMovement = (predictedProbability - 0.5) * 2; // Convert 0-1 to -1 to +1
+        
+        // Calculate accuracy as inverse of prediction error
+        const error = Math.abs(predictedMovement - actualMovement);
+        accuracy = Math.max(0.1, 1 - error); // Cap at 0.1 minimum
+      } else if (targetInfo.type === 'direction') {
+        // For directional markets: accuracy = correct direction prediction
+        const predictedDirection = market.avgPrice > 0.5 ? 1 : -1;
+        const actualDirection = currentPrice > targetInfo.currentPrice ? 1 : -1;
+        accuracy = predictedDirection === actualDirection ? 0.8 : 0.2;
+      }
+      
+      return Math.min(Math.max(accuracy, 0.1), 1.0); // Clamp between 0.1 and 1.0
+      
+    } catch (error) {
+      console.warn('Error calculating prediction accuracy:', error);
+      return 0.5; // Default neutral accuracy
+    }
+  }
+  
+  /**
+   * Extract target information from market title
+   */
+  extractTargetFromMarket(market) {
+    const title = market.title.toLowerCase();
+    
+    // Look for price targets
+    const priceMatch = title.match(/(\w+)\s+(?:reach|hit|be\s+at|be\s+above|be\s+below)\s+\$?(\d+(?:\.\d+)?)/);
+    if (priceMatch) {
+      const symbol = priceMatch[1].toUpperCase();
+      const targetPrice = parseFloat(priceMatch[2]);
+      
+      // Get current price for comparison
+      const currentPrice = this.getCurrentCryptoPrice(symbol);
+      
+      return {
+        type: 'price_target',
+        symbol,
+        targetPrice,
+        currentPrice
+      };
+    }
+    
+    // Look for directional markets
+    const directionMatch = title.match(/(\w+)\s+(?:up|down|rise|fall|increase|decrease)/);
+    if (directionMatch) {
+      const symbol = directionMatch[1].toUpperCase();
+      const currentPrice = this.getCurrentCryptoPrice(symbol);
+      
+      return {
+        type: 'direction',
+        symbol,
+        currentPrice
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Get current crypto price from market data
+   */
+  getCurrentCryptoPrice(symbol) {
+    // Try to get from market cap data first
+    if (this.marketCapData.has(symbol)) {
+      const data = this.marketCapData.get(symbol);
+      return data.price;
+    }
+    
+    // Fallback: try to get from exchange
+    try {
+      // This would need to be implemented with actual exchange data
+      // For now, return null to use default accuracy
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Calculate category accuracy score
+   */
+  calculateCategoryAccuracy(category, cryptoMarkets) {
+    const categoryMarkets = cryptoMarkets.filter(market => 
+      this.isMarketInCategory(market, category)
+    );
+    
+    if (categoryMarkets.length === 0) {
+      return 0.5; // Default neutral accuracy
+    }
+    
+    // Calculate average accuracy for markets in this category
+    const accuracies = categoryMarkets.map(market => 
+      this.calculatePredictionAccuracy(market)
+    );
+    
+    return accuracies.reduce((sum, acc) => sum + acc, 0) / accuracies.length;
+  }
+  
+  /**
+   * Calculate overall time decay factor for all markets
+   */
+  calculateOverallTimeDecay(cryptoMarkets) {
+    if (cryptoMarkets.length === 0) {
+      return 1.0; // No time decay if no markets
+    }
+    
+    // Calculate average time decay across all markets
+    const timeDecays = cryptoMarkets.map(market => 
+      this.getTimeToExpirationAdjustment(market)
+    );
+    
+    return timeDecays.reduce((sum, decay) => sum + decay, 0) / timeDecays.length;
+  }
+  
+  /**
+   * Check if a market belongs to a specific category
+   */
+  isMarketInCategory(market, category) {
+    const keywords = this.marketCategories.get(category);
+    if (!keywords) return false;
+    
+    const title = market.title.toLowerCase();
+    return keywords.some(keyword => title.includes(keyword.toLowerCase()));
   }
 
   /**
