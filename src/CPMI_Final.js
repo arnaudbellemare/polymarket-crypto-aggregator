@@ -132,9 +132,12 @@ export class CPMI_Final {
           if (ohlcv.length > 1) {
             const baseSymbol = symbol.split('/')[0].toLowerCase();
             
-            // Calculate market cap weight (simplified ranking)
-            const marketCapRanking = this.getMarketCapRanking(baseSymbol);
-            this.marketCapData.set(baseSymbol, marketCapRanking);
+            // Store actual price data for crypto price lookups
+            const currentPrice = ohlcv[ohlcv.length - 1][4]; // Last close price
+            this.marketCapData.set(baseSymbol, {
+              price: currentPrice,
+              ranking: this.getMarketCapRanking(baseSymbol)
+            });
             
             // Calculate annualized volatility using EWMA of log returns
             const volatility = this.calculateAnnualizedVolatility(ohlcv);
