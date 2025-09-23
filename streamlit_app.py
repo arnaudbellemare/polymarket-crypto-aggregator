@@ -17,17 +17,18 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
-    /* Main theme colors */
+    /* Main theme colors - High contrast for readability */
     :root {
         --primary-color: #1f2937;
         --secondary-color: #3b82f6;
-        --success-color: #10b981;
-        --danger-color: #ef4444;
-        --warning-color: #f59e0b;
-        --background-color: #f8fafc;
-        --card-background: #ffffff;
-        --text-primary: #1f2937;
-        --text-secondary: #6b7280;
+        --success-color: #059669;
+        --danger-color: #dc2626;
+        --warning-color: #d97706;
+        --background-color: #ffffff;
+        --card-background: #f9fafb;
+        --text-primary: #111827;
+        --text-secondary: #374151;
+        --border-color: #e5e7eb;
     }
     
     /* Main container */
@@ -70,6 +71,7 @@ st.markdown("""
         border-left: 4px solid var(--secondary-color);
         margin-bottom: 1rem;
         transition: transform 0.2s ease;
+        border: 1px solid var(--border-color);
     }
     
     .metric-card:hover {
@@ -78,17 +80,22 @@ st.markdown("""
     }
     
     .metric-card h3 {
-        color: var(--text-primary);
+        color: var(--text-primary) !important;
         font-size: 1.1rem;
         font-weight: 600;
         margin-bottom: 0.5rem;
     }
     
     .metric-card p {
-        color: var(--text-primary);
+        color: var(--text-primary) !important;
         font-size: 1.2rem;
         font-weight: 700;
         margin: 0;
+    }
+    
+    .metric-card small {
+        color: var(--text-secondary) !important;
+        font-size: 0.9rem;
     }
     
     /* Sentiment colors */
@@ -129,13 +136,97 @@ st.markdown("""
         background-color: var(--background-color);
     }
     
-    /* Text color fixes */
-    .stMarkdown {
-        color: var(--text-primary);
+    /* Text color fixes - Comprehensive coverage */
+    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: var(--text-primary) !important;
     }
     
-    .stText {
-        color: var(--text-primary);
+    .stText, .stText p {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Streamlit specific text elements */
+    .stApp > div > div > div > div > div {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Metric labels and values */
+    .metric-container {
+        color: var(--text-primary) !important;
+    }
+    
+    .metric-container label {
+        color: var(--text-secondary) !important;
+    }
+    
+    .metric-container .metric-value {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Dataframe styling */
+    .dataframe th, .dataframe td {
+        color: var(--text-primary) !important;
+        background-color: var(--card-background) !important;
+    }
+    
+    .dataframe th {
+        background-color: var(--background-color) !important;
+        font-weight: 600;
+    }
+    
+    /* Expandable sections */
+    .streamlit-expanderHeader {
+        color: var(--text-primary) !important;
+        background-color: var(--card-background) !important;
+    }
+    
+    .streamlit-expanderContent {
+        color: var(--text-primary) !important;
+        background-color: var(--card-background) !important;
+    }
+    
+    /* Sidebar text */
+    .css-1d391kg, .css-1d391kg p, .css-1d391kg h1, .css-1d391kg h2, .css-1d391kg h3 {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Input fields */
+    .stTextInput > div > div > input {
+        color: var(--text-primary) !important;
+        background-color: var(--card-background) !important;
+    }
+    
+    /* Checkbox and other inputs */
+    .stCheckbox > label {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Global text color override */
+    body, .stApp, .main {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Ensure all text elements are readable */
+    p, span, div, h1, h2, h3, h4, h5, h6, label, td, th {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Specific Streamlit element overrides */
+    .element-container {
+        color: var(--text-primary) !important;
+    }
+    
+    .stAlert {
+        color: var(--text-primary) !important;
+    }
+    
+    .stInfo, .stSuccess, .stWarning, .stError {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Plotly chart text */
+    .js-plotly-plot {
+        color: var(--text-primary) !important;
     }
     
     /* Button styling */
