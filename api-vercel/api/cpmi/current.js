@@ -1,4 +1,4 @@
-module.exports = (req, res) => {
+export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -7,41 +7,53 @@ module.exports = (req, res) => {
     res.status(200).end();
     return;
   }
-  
-  // Mock data for now - this will be replaced with real CPMI data
+
+  // Mock data that matches your real API format
   const mockData = {
     success: true,
     data: {
       index: {
-        value: 125.69,
-        interpretation: "Bullish (+25.7)",
+        value: 116.42,
+        interpretation: "Bullish (+16.4)",
         lastUpdate: new Date().toISOString(),
         categoryIndices: {
-          "bitcoin-markets": 87.25,
-          "ethereum-ecosystem": 73.85,
+          "bitcoin-markets": 42.81,
+          "ethereum-ecosystem": 78.95,
           "regulatory-outcomes": null,
-          "major-altcoins": 84.80,
+          "major-altcoins": 76.33,
           "infrastructure": null
-        }
+        },
+        historicalValues: [
+          {
+            timestamp: new Date(Date.now() - 300000).toISOString(),
+            value: 115.44,
+            probability: 65.44
+          },
+          {
+            timestamp: new Date().toISOString(),
+            value: 116.42,
+            probability: 66.42
+          }
+        ]
       },
       categories: {
         "bitcoin-markets": {
-          index: 87.25,
+          index: 42.81,
           weight: 0.4,
-          interpretation: "Bullish",
-          deviation: 37.25
+          interpretation: "Bearish",
+          deviation: -7.19
         },
         "ethereum-ecosystem": {
-          index: 73.85,
+          index: 78.95,
           weight: 0.3,
           interpretation: "Bullish",
-          deviation: 23.85
+          deviation: 28.95
         },
         "major-altcoins": {
-          index: 84.80,
+          index: 76.33,
           weight: 0.08,
           interpretation: "Bullish",
-          deviation: 34.80
+          deviation: 26.33
         }
       },
       timestamp: new Date().toISOString()
@@ -49,4 +61,4 @@ module.exports = (req, res) => {
   };
 
   res.json(mockData);
-};
+}

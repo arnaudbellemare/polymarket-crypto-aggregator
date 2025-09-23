@@ -1,13 +1,16 @@
 {
   "name": "cpmi-api",
   "version": "1.0.0",
-  "description": "CPMI API for Vercel deployment",
-  "type": "commonjs",
+  "description": "CPMI Real API for Vercel deployment",
+  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ccxt": "^4.1.0",
+    "axios": "^1.6.0"
+  },
   "engines": {
     "node": "22.x"
   }
