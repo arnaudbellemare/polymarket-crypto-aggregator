@@ -267,7 +267,7 @@ export class CPMI_Final {
       console.log('📊 Fetching trade data from Polymarket...');
       
       // Fetch recent trades
-      const tradesResponse = await this.client.getAllRecentTrades(2000);
+      const tradesResponse = await this.client.getCryptoTrades(2000);
       if (!tradesResponse.success) {
         throw new Error(`Failed to fetch trades: ${tradesResponse.error}`);
       }
@@ -396,29 +396,8 @@ export class CPMI_Final {
   processCryptoTrades(trades) {
     const cryptoMarkets = new Map();
     
-    // Define crypto keywords for filtering
-    const cryptoKeywords = [
-      'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
-      'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 
-      'dogecoin', 'doge', 'litecoin', 'ltc', 'chainlink', 'link',
-      'avalanche', 'avax', 'polygon', 'matic', 'defi', 'nft',
-      'binance', 'coinbase', 'kraken', 'exchange', 'mining', 'staking'
-    ];
-    
+    // All trades are already filtered for crypto by the client
     trades.forEach(trade => {
-      // Filter for crypto-related markets only
-      const title = trade.title?.toLowerCase() || '';
-      const slug = trade.slug?.toLowerCase() || '';
-      const eventSlug = trade.eventSlug?.toLowerCase() || '';
-      
-      const isCryptoMarket = cryptoKeywords.some(keyword => 
-        title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
-      );
-      
-      if (!isCryptoMarket) {
-        return; // Skip non-crypto markets
-      }
-      
       const marketKey = trade.conditionId;
       
       if (!cryptoMarkets.has(marketKey)) {
