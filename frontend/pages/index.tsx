@@ -54,9 +54,10 @@ export default function Home() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_CPMI_API_URL || 'http://localhost:3000';
       const [currentResponse, historyResponse] = await Promise.all([
-        axios.get('/api/cpmi/current'),
-        axios.get('/api/cpmi/history')
+        axios.get(`${API_BASE_URL}/api/cpmi/current`),
+        axios.get(`${API_BASE_URL}/api/cpmi/history`)
       ]);
       
       setCpmiData(currentResponse.data);
