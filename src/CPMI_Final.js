@@ -718,6 +718,11 @@ export class CPMI_Final {
       return 'binary';
     }
     
+    // Alternative binary patterns
+    if (lowerTitle.includes('will') && (lowerTitle.includes('say') || lowerTitle.includes('pass') || lowerTitle.includes('win'))) {
+      return 'binary';
+    }
+    
     // Default to sentiment
     return 'sentiment';
   }

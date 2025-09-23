@@ -202,7 +202,7 @@ export class SimplePolymarketClient {
       const response = await this.client.get('/trades', { params });
       
       if (response.data && Array.isArray(response.data)) {
-        // Filter for crypto-related trades
+        // Filter for crypto-related trades (more strict)
         const cryptoKeywords = [
           'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
           'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 
@@ -211,14 +211,29 @@ export class SimplePolymarketClient {
           'binance', 'coinbase', 'kraken', 'exchange', 'mining', 'staking'
         ];
         
+        // Exclude non-crypto keywords
+        const excludeKeywords = [
+          'election', 'mayor', 'mayoral', 'votes', 'voting', 'senate', 'congress',
+          'tennis', 'sports', 'championship', 'tournament', 'game', 'match',
+          'trump', 'biden', 'president', 'political', 'politics'
+        ];
+        
         const cryptoTrades = response.data.filter(trade => {
           const title = trade.title?.toLowerCase() || '';
           const slug = trade.slug?.toLowerCase() || '';
           const eventSlug = trade.eventSlug?.toLowerCase() || '';
           
-          return cryptoKeywords.some(keyword => 
+          // First check if it contains crypto keywords
+          const hasCryptoKeywords = cryptoKeywords.some(keyword => 
             title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
           );
+          
+          // Then check if it should be excluded (non-crypto)
+          const shouldExclude = excludeKeywords.some(keyword => 
+            title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
+          );
+          
+          return hasCryptoKeywords && !shouldExclude;
         });
         
         return new ApiResponse(true, cryptoTrades);
