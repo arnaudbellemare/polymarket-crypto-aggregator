@@ -337,12 +337,18 @@ export class CPMI_Final {
         this.currentIndex = this.config.baselineValue + ((adjustedProbability * 100) - 50);
         
         // Apply smoothing (1-hour SMA) with enhanced metadata
+        // Get current crypto prices for comparison
+        const btcPrice = this.getCurrentCryptoPrice('BTC') || 0;
+        const ethPrice = this.getCurrentCryptoPrice('ETH') || 0;
+        
         this.historicalValues.push({
           timestamp: new Date(),
           value: this.currentIndex,
           probability: overallProbability,
           timeDecay: timeDecayFactor,
-          rawProbability: totalWeightedProbability / totalWeight
+          rawProbability: totalWeightedProbability / totalWeight,
+          btcPrice: btcPrice,
+          ethPrice: ethPrice
         });
 
         // Keep only last 7 days of data for historical storage
@@ -889,12 +895,20 @@ export class CPMI_Final {
    * Get current index value
    */
   getCurrentIndex() {
+    // Get current crypto prices for comparison
+    const btcPrice = this.getCurrentCryptoPrice('BTC') || 0;
+    const ethPrice = this.getCurrentCryptoPrice('ETH') || 0;
+    
     return {
       value: this.currentIndex,
       interpretation: this.getIndexInterpretation(),
       lastUpdate: this.lastUpdate,
       categoryIndices: this.categoryIndices,
-      historicalValues: this.historicalValues.slice(-100)  // Last 100 data points (about 8 hours)
+      historicalValues: this.historicalValues.slice(-100),  // Last 100 data points (about 8 hours)
+      currentPrices: {
+        btc: btcPrice,
+        eth: ethPrice
+      }
     };
   }
 
