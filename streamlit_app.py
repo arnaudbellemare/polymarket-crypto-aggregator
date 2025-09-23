@@ -352,12 +352,160 @@ def main():
         with col2:
             st.dataframe(category_df, use_container_width=True)
 
+        # Market Details Section
+        st.markdown('<h2 class="section-header">🔍 Market Analysis</h2>', unsafe_allow_html=True)
+        
+        # Create expandable sections for each category
+        categories = data['categories']
+        
+        for category_key, category_data in categories.items():
+            if category_data and category_data['index'] is not None:
+                category_name = category_key.replace('-', ' ').title()
+                weight_percent = category_data['weight'] * 100
+                index_value = category_data['index']
+                interpretation = category_data['interpretation']
+                deviation = category_data['deviation']
+                
+                with st.expander(f"📊 {category_name} ({weight_percent:.1f}% weight) - {index_value:.1f} ({interpretation})", expanded=False):
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        st.markdown(f"""
+                        **Category Details:**
+                        - **Weight:** {weight_percent:.1f}% of total index
+                        - **Current Index:** {index_value:.2f}
+                        - **Interpretation:** {interpretation}
+                        - **Deviation from Neutral:** {deviation:+.2f}
+                        """)
+                        
+                        # Show market type explanation
+                        if category_key == 'bitcoin-markets':
+                            st.markdown("""
+                            **Markets Included:**
+                            - Bitcoin price predictions
+                            - Bitcoin adoption forecasts
+                            - Bitcoin regulatory outcomes
+                            - Bitcoin ETF and institutional adoption
+                            """)
+                        elif category_key == 'ethereum-ecosystem':
+                            st.markdown("""
+                            **Markets Included:**
+                            - Ethereum price predictions
+                            - DeFi protocol success rates
+                            - Layer 2 scaling solutions
+                            - Ethereum upgrade outcomes
+                            """)
+                        elif category_key == 'regulatory-outcomes':
+                            st.markdown("""
+                            **Markets Included:**
+                            - Crypto regulation predictions
+                            - SEC approval outcomes
+                            - CBDC development timelines
+                            - Government crypto policies
+                            """)
+                        elif category_key == 'major-altcoins':
+                            st.markdown("""
+                            **Markets Included:**
+                            - Solana, Cardano, Polkadot predictions
+                            - Layer 1 blockchain performance
+                            - Altcoin adoption forecasts
+                            - Cross-chain interoperability
+                            """)
+                        elif category_key == 'infrastructure':
+                            st.markdown("""
+                            **Markets Included:**
+                            - Crypto infrastructure development
+                            - Mining and staking outcomes
+                            - Exchange and custody solutions
+                            - Developer tool adoption
+                            """)
+                    
+                    with col2:
+                        # Create a mini chart for this category
+                        fig = go.Figure(go.Indicator(
+                            mode = "gauge+number+delta",
+                            value = index_value,
+                            domain = {'x': [0, 1], 'y': [0, 1]},
+                            title = {'text': f"{category_name}<br><span style='font-size:14px'>Index Value</span>"},
+                            delta = {'reference': 100},
+                            gauge = {
+                                'axis': {'range': [None, 150]},
+                                'bar': {'color': "darkblue"},
+                                'steps': [
+                                    {'range': [0, 50], 'color': "lightgray"},
+                                    {'range': [50, 100], 'color': "yellow"},
+                                    {'range': [100, 150], 'color': "lightgreen"}
+                                ],
+                                'threshold': {
+                                    'line': {'color': "red", 'width': 4},
+                                    'thickness': 0.75,
+                                    'value': 100
+                                }
+                            }
+                        ))
+                        fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
+                        st.plotly_chart(fig, use_container_width=True)
+
+        # Methodology Section
+        st.markdown('<h2 class="section-header">📚 CPMI Methodology</h2>', unsafe_allow_html=True)
+        
+        with st.expander("🔬 How the CPMI Index is Calculated", expanded=False):
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.markdown("""
+                **📊 Formula:**
+                ```
+                CPMI = 100 + (Bullish Probability - 50)
+                ```
+                
+                **🎯 Interpretation:**
+                - **100** = Market neutral (50/50 bull/bear)
+                - **Above 100** = Bullish crypto sentiment
+                - **Below 100** = Bearish crypto sentiment
+                
+                **⚖️ Category Weights:**
+                - Bitcoin Markets: 40%
+                - Ethereum Ecosystem: 30%
+                - Regulatory Outcomes: 20%
+                - Major Altcoins: 8%
+                - Infrastructure: 2%
+                """)
+            
+            with col2:
+                st.markdown("""
+                **🔍 Data Sources:**
+                - **Polymarket** prediction markets
+                - **CCXT** real-time crypto prices
+                - **Kraken** exchange data
+                
+                **⏱️ Update Frequency:**
+                - Every 5 minutes
+                - 1-hour smoothing period
+                - Real-time market data
+                
+                **📈 Market Types:**
+                - Binary: "Will X happen?"
+                - Directional: "X Up or Down"
+                - Price Prediction: "Will X reach $Y?"
+                """)
+            
+            st.markdown("""
+            **🎯 Quality Assurance:**
+            - Volume-weighted market selection
+            - Time-sensitive probability extraction
+            - Market cap and volatility adjustments
+            - Cross-validation with multiple data sources
+            """)
+
         # Historical data
         if history_data and history_data.get('success'):
             st.markdown('<h2 class="section-header">📈 Historical Trend</h2>', unsafe_allow_html=True)
             
             history = history_data['data']['history']
-            if history:
+            stats = history_data['data']['statistics']
+            
+            if history and len(history) > 1:
                 hist_df = pd.DataFrame(history)
                 hist_df['timestamp'] = pd.to_datetime(hist_df['timestamp'])
                 hist_df['sentiment'] = hist_df['index'].apply(get_sentiment_color)
@@ -378,22 +526,38 @@ def main():
                     title="CPMI Historical Trend",
                     xaxis_title="Time",
                     yaxis_title="CPMI Index",
-                    height=400
+                    height=400,
+                    showlegend=False
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Statistics
-                stats = history_data['data']['statistics']
-                col1, col2, col3, col4 = st.columns(4)
+                if stats:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Min", f"{stats['min']:.2f}")
+                    with col2:
+                        st.metric("Max", f"{stats['max']:.2f}")
+                    with col3:
+                        st.metric("Average", f"{stats['average']:.2f}")
+                    with col4:
+                        st.metric("Volatility", f"{stats['volatility']:.2f}")
+            else:
+                st.info("📊 **Historical data is being collected...** The CPMI updates every 5 minutes. Historical trends will appear once more data points are available.")
                 
-                with col1:
-                    st.metric("Min", f"{stats['min']:.2f}")
-                with col2:
-                    st.metric("Max", f"{stats['max']:.2f}")
-                with col3:
-                    st.metric("Average", f"{stats['average']:.2f}")
-                with col4:
-                    st.metric("Volatility", f"{stats['volatility']:.2f}")
+                # Show current statistics even with limited data
+                if stats:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("Data Points", f"{stats.get('dataPoints', 1)}")
+                    with col2:
+                        st.metric("Current Value", f"{current_index:.2f}")
+                    with col3:
+                        st.metric("Status", "Collecting")
+                    with col4:
+                        st.metric("Next Update", "5 min")
 
         # Auto-refresh
         if st.sidebar.checkbox("Auto-refresh (30s)", value=True):
