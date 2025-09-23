@@ -446,6 +446,79 @@ def main():
         # Market Details Section
         st.markdown('<h2 class="section-header">🔍 Market Analysis</h2>', unsafe_allow_html=True)
         
+        # Raw Markets Breakdown
+        st.markdown('<h3 class="section-header">📋 Individual Markets Used in Calculation</h3>', unsafe_allow_html=True)
+        
+        # Fetch detailed market data
+        @st.cache_data(ttl=60)
+        def fetch_market_details():
+            try:
+                response = requests.get(f"{API_BASE_URL}/api/cpmi/export", timeout=10)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    return None
+            except:
+                return None
+        
+        market_details = fetch_market_details()
+        
+        if market_details and market_details.get('success'):
+            markets_data = market_details['data']
+            
+            # Create expandable section for raw markets
+            with st.expander("📊 View All Markets Used in CPMI Calculation", expanded=False):
+                st.markdown("""
+                **This shows every market that contributed to the CPMI calculation:**
+                - **Market Title:** The prediction market question
+                - **Category:** Which CPMI category it belongs to
+                - **Probability:** Market's bullish probability (0-100%)
+                - **Volume:** Trading volume (higher = more weight)
+                - **Weight:** How much this market contributes to the final score
+                - **Type:** Type of prediction (price target, directional, etc.)
+                """)
+                
+                # Get markets from the export data
+                if 'markets' in markets_data:
+                    markets = markets_data['markets']
+                    
+                    # Create DataFrame for markets
+                    market_rows = []
+                    for market in markets:
+                        market_rows.append({
+                            'Market Title': market.get('title', 'N/A')[:80] + '...' if len(market.get('title', '')) > 80 else market.get('title', 'N/A'),
+                            'Category': market.get('category', 'N/A'),
+                            'Probability': f"{market.get('probability', 0):.1f}%",
+                            'Volume': f"${market.get('volume', 0):,.0f}",
+                            'Weight': f"{market.get('weight', 0):.3f}",
+                            'Type': market.get('type', 'N/A'),
+                            'Last Trade': market.get('lastTradeTime', 'N/A')
+                        })
+                    
+                    if market_rows:
+                        markets_df = pd.DataFrame(market_rows)
+                        st.dataframe(markets_df, width='stretch')
+                        
+                        # Summary statistics
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Total Markets", len(markets))
+                        with col2:
+                            avg_prob = sum(m.get('probability', 0) for m in markets) / len(markets) if markets else 0
+                            st.metric("Avg Probability", f"{avg_prob:.1f}%")
+                        with col3:
+                            total_volume = sum(m.get('volume', 0) for m in markets)
+                            st.metric("Total Volume", f"${total_volume:,.0f}")
+                        with col4:
+                            st.metric("Categories", len(set(m.get('category', '') for m in markets)))
+                    else:
+                        st.info("No individual market data available in export.")
+                else:
+                    st.info("Market details not available in the current API response.")
+        
+        # Market Details Section (existing)
+        st.markdown('<h3 class="section-header">📊 Category Breakdown</h3>', unsafe_allow_html=True)
+        
         # Create expandable sections for each category
         categories = data['categories']
         

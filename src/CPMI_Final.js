@@ -286,6 +286,7 @@ export class CPMI_Final {
       
       // Process crypto markets
       const cryptoMarkets = this.processCryptoTrades(cryptoTrades);
+      this.lastProcessedMarkets = cryptoMarkets; // Store for export
       console.log(`📊 Processed ${cryptoMarkets.length} crypto markets`);
       
       // Calculate category indices using improved methodology
@@ -1307,7 +1308,59 @@ export class CPMI_Final {
       statistics: this.getIndexStatistics(),
       configuration: this.config,
       marketCategories: Object.fromEntries(this.marketCategories),
+      markets: this.getIndividualMarkets(),
       lastUpdate: this.lastUpdate
     };
+  }
+  
+  /**
+   * Get individual markets used in calculation
+   */
+  getIndividualMarkets() {
+    if (!this.lastProcessedMarkets) {
+      return [];
+    }
+    
+    return this.lastProcessedMarkets.map(market => {
+      const probability = this.calculateBullishProbability(market);
+      const weight = this.calculateMarketWeight(market);
+      const category = this.getMarketCategory(market);
+      const targetInfo = this.extractTargetFromMarket(market);
+      
+      return {
+        title: market.title,
+        category: category,
+        probability: probability,
+        volume: market.totalVolume || 0,
+        weight: weight,
+        type: targetInfo ? targetInfo.type : 'unknown',
+        avgPrice: market.avgPrice,
+        tradeCount: market.tradeCount || 0,
+        lastTradeTime: market.lastTradeTime,
+        slug: market.slug,
+        eventSlug: market.eventSlug
+      };
+    });
+  }
+  
+  /**
+   * Get the category for a market
+   */
+  getMarketCategory(market) {
+    const title = market.title?.toLowerCase() || '';
+    const slug = market.slug?.toLowerCase() || '';
+    const eventSlug = market.eventSlug?.toLowerCase() || '';
+    
+    for (const [category, keywords] of this.marketCategories) {
+      if (keywords.some(keyword => 
+        title.includes(keyword) || 
+        slug.includes(keyword) || 
+        eventSlug.includes(keyword)
+      )) {
+        return category;
+      }
+    }
+    
+    return 'uncategorized';
   }
 }
