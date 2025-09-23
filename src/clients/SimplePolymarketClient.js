@@ -294,6 +294,268 @@ export class SimplePolymarketClient {
   }
 
   /**
+   * Get markets from Polymarket Gamma API
+   * @param {Object} params - Query parameters for filtering markets
+   * @param {string} params.status - Market status filter (e.g., 'ACTIVE', 'RESOLVED')
+   * @param {string} params.category - Market category filter
+   * @param {string} params.tokens - Token filter
+   * @param {number} params.limit - Number of markets to fetch
+   * @param {number} params.offset - Offset for pagination
+   */
+  async getMarkets(params = {}) {
+    try {
+      // Use the Gamma API endpoint for markets
+      const gammaClient = axios.create({
+        baseURL: 'https://gamma-api.polymarket.com',
+        timeout: this.timeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const response = await gammaClient.get('/markets', { params });
+      return new ApiResponse(true, response.data);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get active markets from Polymarket Gamma API
+   * @param {number} limit - Number of active markets to fetch
+   */
+  async getActiveMarkets(limit = 100) {
+    try {
+      const params = {
+        status: 'ACTIVE',
+        limit: Math.min(limit, 1000)
+      };
+      return await this.getMarkets(params);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get markets by category from Polymarket Gamma API
+   * @param {string} category - Market category to filter by
+   * @param {number} limit - Number of markets to fetch
+   */
+  async getMarketsByCategory(category, limit = 100) {
+    try {
+      const params = {
+        category,
+        limit: Math.min(limit, 1000)
+      };
+      return await this.getMarkets(params);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get comprehensive market data with all fields
+   * @param {Object} params - Query parameters for filtering markets
+   * @param {string} params.status - Market status filter (e.g., 'ACTIVE', 'RESOLVED')
+   * @param {string} params.category - Market category filter
+   * @param {string} params.tokens - Token filter
+   * @param {number} params.limit - Number of markets to fetch
+   * @param {number} params.offset - Offset for pagination
+   * @param {boolean} params.includeEvents - Include event data
+   * @param {boolean} params.includeCategories - Include category data
+   * @param {boolean} params.includeTags - Include tag data
+   */
+  async getComprehensiveMarkets(params = {}) {
+    try {
+      // Use the Gamma API endpoint for markets with comprehensive data
+      const gammaClient = axios.create({
+        baseURL: 'https://gamma-api.polymarket.com',
+        timeout: this.timeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      // Add parameters to include related data
+      const queryParams = {
+        ...params,
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+
+      const response = await gammaClient.get('/markets', { params: queryParams });
+      return new ApiResponse(true, response.data);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get crypto markets with comprehensive data
+   * @param {number} limit - Number of crypto markets to fetch
+   */
+  async getCryptoMarkets(limit = 100) {
+    try {
+      const params = {
+        category: 'crypto',
+        limit: Math.min(limit, 1000),
+        active: true,
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+      return await this.getComprehensiveMarkets(params);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get only crypto-related markets with strict filtering
+   * @param {number} limit - Number of crypto markets to fetch
+   * @param {boolean} activeOnly - Only fetch active markets (default: true)
+   */
+  async getCryptoOnlyMarkets(limit = 100, activeOnly = true) {
+    try {
+      const gammaClient = axios.create({
+        baseURL: 'https://gamma-api.polymarket.com',
+        timeout: this.timeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const params = {
+        category: 'crypto',
+        limit: Math.min(limit, 1000),
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+
+      if (activeOnly) {
+        params.active = true;
+      }
+
+      const response = await gammaClient.get('/markets', { params });
+      
+      // Additional client-side filtering to ensure crypto-only results
+      let cryptoMarkets = response.data;
+      
+      if (Array.isArray(cryptoMarkets)) {
+        // Filter for crypto-related markets based on multiple criteria
+        cryptoMarkets = cryptoMarkets.filter(market => {
+          const isCryptoCategory = market.category && 
+            (market.category.toLowerCase().includes('crypto') || 
+             market.category.toLowerCase().includes('bitcoin') ||
+             market.category.toLowerCase().includes('ethereum') ||
+             market.category.toLowerCase().includes('cryptocurrency'));
+          
+          const isCryptoQuestion = market.question && 
+            (market.question.toLowerCase().includes('bitcoin') ||
+             market.question.toLowerCase().includes('ethereum') ||
+             market.question.toLowerCase().includes('crypto') ||
+             market.question.toLowerCase().includes('btc') ||
+             market.question.toLowerCase().includes('eth') ||
+             market.question.toLowerCase().includes('cryptocurrency'));
+          
+          const isCryptoSlug = market.slug && 
+            (market.slug.toLowerCase().includes('bitcoin') ||
+             market.slug.toLowerCase().includes('ethereum') ||
+             market.slug.toLowerCase().includes('crypto') ||
+             market.slug.toLowerCase().includes('btc') ||
+             market.slug.toLowerCase().includes('eth'));
+          
+          return isCryptoCategory || isCryptoQuestion || isCryptoSlug;
+        });
+      }
+      
+      return new ApiResponse(true, cryptoMarkets);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get crypto markets by specific cryptocurrency
+   * @param {string} cryptoName - Name of cryptocurrency (e.g., 'bitcoin', 'ethereum')
+   * @param {number} limit - Number of markets to fetch
+   */
+  async getCryptoMarketsByToken(cryptoName, limit = 50) {
+    try {
+      const gammaClient = axios.create({
+        baseURL: 'https://gamma-api.polymarket.com',
+        timeout: this.timeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const params = {
+        limit: Math.min(limit, 1000),
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+
+      const response = await gammaClient.get('/markets', { params });
+      
+      // Filter for specific cryptocurrency
+      let cryptoMarkets = response.data;
+      
+      if (Array.isArray(cryptoMarkets)) {
+        const searchTerm = cryptoName.toLowerCase();
+        cryptoMarkets = cryptoMarkets.filter(market => {
+          const question = (market.question || '').toLowerCase();
+          const slug = (market.slug || '').toLowerCase();
+          const category = (market.category || '').toLowerCase();
+          
+          return question.includes(searchTerm) || 
+                 slug.includes(searchTerm) || 
+                 category.includes(searchTerm);
+        });
+      }
+      
+      return new ApiResponse(true, cryptoMarkets);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get featured markets
+   * @param {number} limit - Number of featured markets to fetch
+   */
+  async getFeaturedMarkets(limit = 50) {
+    try {
+      const params = {
+        featured: true,
+        limit: Math.min(limit, 1000),
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+      return await this.getComprehensiveMarkets(params);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
+   * Get markets by volume (highest volume first)
+   * @param {number} limit - Number of markets to fetch
+   * @param {string} timeFrame - Volume timeframe: '24hr', '1wk', '1mo', '1yr'
+   */
+  async getMarketsByVolume(limit = 100, timeFrame = '24hr') {
+    try {
+      const params = {
+        limit: Math.min(limit, 1000),
+        sortBy: `volume${timeFrame}`,
+        order: 'desc',
+        include: 'events,categories,tags,creator,imageOptimized,iconOptimized'
+      };
+      return await this.getComprehensiveMarkets(params);
+    } catch (error) {
+      return new ApiResponse(false, null, error.message);
+    }
+  }
+
+  /**
    * Health check for the API
    */
   async healthCheck() {
