@@ -688,22 +688,35 @@ export class CPMI_Final {
    * Classify market type based on title
    */
   classifyMarketType(title) {
-    if (title.includes('up or down') || title.includes('up/down')) {
-      return 'directional';
-    }
+    const lowerTitle = title.toLowerCase();
     
-    if (title.includes('will') && (title.includes('above') || title.includes('below') || title.includes('reach'))) {
-      return 'price_prediction';
-    }
-    
-    if (title.includes('between') || title.includes('range')) {
+    // Price range markets (between X and Y)
+    if (lowerTitle.includes('between') && lowerTitle.includes('and') && 
+        (lowerTitle.includes('$') || lowerTitle.includes('price'))) {
       return 'range';
     }
     
-    if (title.includes('will') && (title.includes('be') || title.includes('happen'))) {
+    // Price target markets (specific price levels)
+    if ((lowerTitle.includes('reach') || lowerTitle.includes('hit') || 
+         lowerTitle.includes('above') || lowerTitle.includes('below') ||
+         lowerTitle.includes('dip to') || lowerTitle.includes('go to') ||
+         lowerTitle.includes('touch')) && 
+        (lowerTitle.includes('$') || lowerTitle.includes('price'))) {
+      return 'price_target';
+    }
+    
+    // Directional markets
+    if (lowerTitle.includes('up or down') || lowerTitle.includes('up/down') ||
+        lowerTitle.includes('bullish') || lowerTitle.includes('bearish')) {
+      return 'direction';
+    }
+    
+    // Binary markets (yes/no questions)
+    if (lowerTitle.includes('will') && (lowerTitle.includes('?') || lowerTitle.includes('happen'))) {
       return 'binary';
     }
     
+    // Default to sentiment
     return 'sentiment';
   }
 
@@ -1351,6 +1364,17 @@ export class CPMI_Final {
     const slug = market.slug?.toLowerCase() || '';
     const eventSlug = market.eventSlug?.toLowerCase() || '';
     
+    // Check if it's actually a crypto-related market
+    const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'cardano', 'ada', 'polkadot', 'dot', 'dogecoin', 'doge'];
+    const isCryptoMarket = cryptoKeywords.some(keyword => 
+      title.includes(keyword) || slug.includes(keyword) || eventSlug.includes(keyword)
+    );
+    
+    if (!isCryptoMarket) {
+      return 'uncategorized';
+    }
+    
+    // Categorize crypto markets
     for (const [category, keywords] of this.marketCategories) {
       if (keywords.some(keyword => 
         title.includes(keyword) || 
