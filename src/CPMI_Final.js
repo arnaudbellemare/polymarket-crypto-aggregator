@@ -36,6 +36,7 @@ export class CPMI_Final {
       baselineValue: 100,               // Perfect market balance baseline
       updateInterval: 5 * 60 * 1000,    // 5 minutes
       smoothingPeriod: 60 * 60 * 1000,  // 1 hour SMA
+      historicalRetention: 7 * 24 * 60 * 60 * 1000,  // 7 days historical storage
       
       ...config
     };
@@ -344,16 +345,21 @@ export class CPMI_Final {
           rawProbability: totalWeightedProbability / totalWeight
         });
 
-        // Keep only last hour of data for SMA
-        const oneHourAgo = new Date(Date.now() - this.config.smoothingPeriod);
+        // Keep only last 7 days of data for historical storage
+        const sevenDaysAgo = new Date(Date.now() - this.config.historicalRetention);
         this.historicalValues = this.historicalValues.filter(
-          entry => entry.timestamp >= oneHourAgo
+          entry => entry.timestamp >= sevenDaysAgo
         );
 
-        // Calculate smoothed index
-        if (this.historicalValues.length > 0) {
-          const sum = this.historicalValues.reduce((acc, entry) => acc + entry.value, 0);
-          this.currentIndex = sum / this.historicalValues.length;
+        // Calculate smoothed index using only last 1 hour of data
+        const oneHourAgo = new Date(Date.now() - this.config.smoothingPeriod);
+        const recentValues = this.historicalValues.filter(
+          entry => entry.timestamp >= oneHourAgo
+        );
+        
+        if (recentValues.length > 0) {
+          const sum = recentValues.reduce((acc, entry) => acc + entry.value, 0);
+          this.currentIndex = sum / recentValues.length;
         }
       }
 
@@ -888,7 +894,7 @@ export class CPMI_Final {
       interpretation: this.getIndexInterpretation(),
       lastUpdate: this.lastUpdate,
       categoryIndices: this.categoryIndices,
-      historicalValues: this.historicalValues.slice(-10)
+      historicalValues: this.historicalValues.slice(-100)  // Last 100 data points (about 8 hours)
     };
   }
 
