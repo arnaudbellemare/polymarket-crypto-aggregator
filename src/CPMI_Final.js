@@ -316,8 +316,8 @@ export class CPMI_Final {
           const volumeWeight = this.calculateCategoryVolumeWeight(category, cryptoMarkets);
           const timeWeight = this.calculateCategoryTimeWeight(category, cryptoMarkets);
           
-          // Combined weight: accuracy × volume × time
-          const combinedWeight = accuracyWeight * volumeWeight * timeWeight;
+          // Combined weight: volume × time (temporarily removing accuracy weighting)
+          const combinedWeight = volumeWeight * timeWeight;
           const adjustedProbability = categoryIndex * combinedWeight;
           
           totalWeightedProbability += adjustedProbability * categoryWeight;
